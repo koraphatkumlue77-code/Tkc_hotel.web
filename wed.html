@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#082344">
+  <meta name="description" content="TKC Never Wekes Hotel — เลือกห้องพักและวางแผนวันพักผ่อนของคุณ">
+  <title>TKC | Never Wekes Hotel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <svg class="svg-library" xmlns="http://www.w3.org/2000/svg"><symbol id="search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="7.5"/><path d="m16 16 6 6"/></symbol><symbol id="person" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M3 22v-3a9 9 0 0 1 18 0v3"/></symbol><symbol id="chat" viewBox="0 0 24 24"><path d="M21 11c0 5-4 8-9 8H7l-5 3 1-6a8 8 0 0 1-1-5c0-5 4-9 10-9s9 4 9 9Z"/><path d="M7 10h.1M12 10h.1M17 10h.1"/></symbol><symbol id="send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4 20-7ZM11 13 22 2"/></symbol><symbol id="palm" viewBox="0 0 48 48"><path d="M24 42c5-10 6-20 3-28M27 14C16 4 8 10 7 17c9-5 15-3 20-3ZM27 14C30 1 40 3 44 9c-9-1-12 1-17 5ZM27 14C12 16 11 25 14 28c4-8 8-10 13-14ZM27 14c12-2 17 4 16 11-5-6-11-9-16-11ZM4 42h40"/></symbol></svg>
+  <header class="site-header">
+    <button class="menu-button" id="menu-toggle" aria-expanded="false" aria-controls="main-nav"><span>ตัวเลือก</span><span class="hamburger">☰</span></button>
+    <a class="brand" href="#home" aria-label="TKC หน้าหลัก"><svg><use href="#palm"/></svg><span><strong>TKC</strong><small>NEVER WEKES HOTEL</small></span></a>
+    <nav id="main-nav" aria-label="เมนูหลัก">
+      <a href="#home" class="active" data-page="home">หน้าหลัก</a><a href="#rooms" data-page="rooms">ห้องพัก</a><a href="#facilities" data-page="facilities">สิ่งอำนวยความสะดวกและทริป</a><a href="#reviews" data-page="reviews">รีวิว</a><a href="#contact" data-page="contact">ติดต่อเจ้าหน้าที่</a>
+    </nav>
+    <div class="header-actions"><button class="login-button" data-login="ลูกค้า"><svg><use href="#person"/></svg>เข้าสู่ระบบ</button><button class="login-button employee-login" data-login="พนักงาน">เข้าสู่ระบบพนักงาน</button><label class="language-label"><span class="sr-only">ภาษา</span><select id="language"><option value="th">TH</option><option value="en">EN</option></select></label></div>
+  </header>
+  <main>
+    <section class="hero" id="home" aria-label="ยินดีต้อนรับสู่ TKC Never Wekes Hotel">
+      <div class="hero-shade"></div><div class="hero-title"><span>TKC</span><h1>NEVER WEKES HOTEL</h1><p>ให้ทุกวันพักผ่อน เป็นช่วงเวลาที่พิเศษ</p></div>
+      <form class="booking-search" id="search-form">
+        <label class="room-field"><span>เลือกห้อง</span><select id="room-type" name="room"><option value="all">ทุกประเภทห้อง</option value="standard">Standard Room</option><option value="superior">Superior Room</option><option value="deluxe">Deluxe Room</option><option value="family">Family Room</option></select></label>
+        <label><span>วันเช็คอิน</span><input id="checkin" name="checkin" type="date" required aria-label="วันเช็คอิน"></label>
+        <label><span>วันเช็คเอาท์</span><input id="checkout" name="checkout" type="date" required aria-label="วันเช็คเอาท์"></label>
+        <label class="guest-field"><span>จำนวนผู้ที่จะเข้าพัก</span><span class="guest-control"><svg><use href="#person"/></svg><select id="guests" name="guests" aria-label="จำนวนผู้เข้าพัก"><option value="1">1 คน</option><option value="2" selected>2 คน</option><option value="3">3 คน</option><option value="4">4 คน</option><option value="5">5 คน</option><option value="6">6 คน</option></select></span></label>
+        <button class="primary search-button" type="submit"><svg><use href="#search"/></svg>ค้นหา</button><p id="search-error" class="form-error" role="alert"></p>
+      </form>
+    </section>
+    <section id="rooms" class="rooms-section section-shell">
+      <div class="section-heading"><div><p class="eyebrow">ROOMS & SUITES</p><h2 id="rooms-title">เลือกห้องพักที่เหมาะกับคุณ</h2><p>+ ค่าอาหารเช้าเพิ่มทุกประเภทห้อง 350 บาทต่อคน</p></div><button id="reset-search" class="text-button" hidden>ดูห้องพักทั้งหมด ↗</button></div>
+      <p id="results-status" class="results-status" role="status"></p><div class="room-grid" id="room-grid"></div>
+      <div id="empty-state" class="empty-state" hidden><h3>ไม่พบประเภทห้องที่ตรงกับตัวเลือก</h3><p>ลองเปลี่ยนประเภทห้องหรือจำนวนผู้เข้าพัก</p><button class="primary" id="empty-reset">ดูห้องพักทั้งหมด</button></div>
+    </section>
+    <section class="facilities section-shell" id="facilities"><div class="section-heading"><div><p class="eyebrow">A LITTLE MORE TO ENJOY</p><h2>เติมเต็มวันพักผ่อนของคุณ</h2></div><p>พักสบาย พร้อมประสบการณ์ที่น่าจดจำ</p></div><div class="facility-grid"><article><span>≈</span><h3>สระว่ายน้ำ</h3><p>ใช้เวลาช้า ๆ ริมสระในบรรยากาศผ่อนคลาย</p></article><article><span>☕</span><h3>อาหารเช้า</h3><p>เริ่มต้นเช้าวันใหม่ในราคา 350 บาทต่อคน</p></article><article><span>☾</span><h3>ทริปตลาดกลางคืน</h3><p>สอบถามรอบเที่ยวและรายละเอียดกับฝ่ายต้อนรับ</p><button class="text-button" data-open-chat>สอบถามทริป ↗</button></article></div></section>
+    <section class="reviews section-shell" id="reviews"><p class="eyebrow">GUEST STORIES</p><h2>ช่วงเวลาดี ๆ จากผู้เข้าพัก</h2><p class="demo-note">ตัวอย่างการแสดงผลรีวิว</p><div class="review-grid"><blockquote><span class="stars" aria-label="5 ดาว">★★★★★</span><p>“ห้องพักสบาย บรรยากาศเงียบสงบ เหมาะกับการมาพักผ่อนมากค่ะ”</p><footer>คุณพลอย · Standard Room</footer></blockquote><blockquote><span class="stars" aria-label="5 ดาว">★★★★★</span><p>“พนักงานดูแลดี มีพื้นที่ให้ครอบครัวได้ใช้เวลาร่วมกัน”</p><footer>คุณธนา · Family Room</footer></blockquote></div></section>
+    <footer class="footer section-shell" id="contact"><div><p class="footer-brand">TKC</p><p>NEVER WEKES HOTEL</p><small>ช่วงเวลาพักผ่อน ที่เป็นของคุณ</small></div><div><h2>ติดต่อเจ้าหน้าที่</h2><p>สอบถามห้องพัก การจอง และบริการของโรงแรม</p><button class="primary" data-open-chat>พูดคุยกับฝ่ายต้อนรับ ↗</button></div><p class="prototype-note">ต้นแบบ UX/UI · ยังไม่เชื่อมต่อระบบจองหรือพนักงานจริง</p></footer>
+  </main>
+  <aside class="chat-panel" id="chat-panel" hidden aria-label="แชตฝ่ายต้อนรับ"><header><div class="chat-avatar"><svg><use href="#chat"/></svg><i></i></div><div><h2>คุยกับฝ่ายต้อนรับ</h2><p>โหมดตัวอย่าง · ยังไม่เชื่อมต่อเจ้าหน้าที่</p></div><button id="chat-close" aria-label="ปิดแชต">×</button></header><div class="chat-messages" id="chat-messages" role="log" aria-live="polite"><p class="message staff">สวัสดีค่ะ ยินดีต้อนรับสู่ TKC 🌴<br>สนใจสอบถามห้องพักหรือบริการด้านไหนคะ?</p></div><form id="chat-form"><label class="sr-only" for="chat-input">ข้อความถึงพนักงาน</label><input id="chat-input" placeholder="พิมพ์ข้อความถึงพนักงาน" maxlength="1000" required autocomplete="off"><button class="primary" aria-label="ส่งข้อความ"><svg><use href="#send"/></svg></button></form></aside>
+  <button class="chat-launcher" id="chat-toggle" aria-expanded="false" aria-controls="chat-panel"><svg><use href="#chat"/></svg><span>พูดคุยกับพนักงาน</span></button>
+  <dialog id="booking-dialog"><button class="dialog-close" data-close aria-label="ปิด">×</button><p class="eyebrow">YOUR NEXT STAY</p><h2 id="booking-title"></h2><p id="booking-summary"></p><form id="booking-form"><label>ชื่อผู้จอง<input name="name" autocomplete="name" required placeholder="ชื่อ–นามสกุล"></label><label>อีเมล<input name="email" type="email" autocomplete="email" required placeholder="you@example.com"></label><p class="demo-note">แบบฟอร์มตัวอย่าง ข้อมูลจะไม่ถูกส่งหรือบันทึก</p><button class="primary">ทดลองยืนยันการจอง</button></form></dialog>
+  <dialog id="login-dialog"><button class="dialog-close" data-close aria-label="ปิด">×</button><p class="eyebrow">WELCOME BACK</p><h2 id="login-title">เข้าสู่ระบบ</h2><form id="login-form"><label>อีเมล / ชื่อผู้ใช้<input autocomplete="username" required></label><label>รหัสผ่าน<input type="password" autocomplete="current-password" required minlength="6"></label><p class="demo-note">หน้าตัวอย่าง ยังไม่เชื่อมต่อระบบยืนยันตัวตน</p><button class="primary">เข้าสู่ระบบ</button></form></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>
