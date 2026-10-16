@@ -2,7 +2,7 @@
 const $ = selector => document.querySelector(selector);
 const rooms = [
   {id:'standard',name:'Standard Room',price:1000,capacity:2,size:'18–25',bed:'เตียงควีนไซส์',image:'photo-1611892440504-42a792e24d32'},
-  {id:'deluxe',name:'Deluxe Room',price:1800,capacity:2,size:'30–35',bed:'เตียงคิงไซส์',image:'photo-1590490360182-c33d57733427'},
+  {id:'deluxe',name:'Deluxe Room',price:1500,capacity:2,size:'30–35',bed:'เตียงคิงไซส์',image:'photo-1590490360182-c33d57733427'},
   {id:'superior',name:'Superior Room',price:1400,capacity:3,size:'25–30',bed:'เตียงคิงไซส์',image:'photo-1566665797739-1674de7a421a'},
   {id:'family',name:'Family Room',price:2600,capacity:6,size:'40–50',bed:'เตียงคู่สำหรับครอบครัว',image:'photo-1566073771259-6a8506099945'}
 ];
