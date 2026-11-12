@@ -3,10 +3,10 @@
 const $ = selector => document.querySelector(selector);
 
 const rooms = [
-  {id:'standard',name:'Standard Room',price:1000,capacity:2,size:'18–25',bed:'เตียงควีนไซส์',image:'photo-1611892440504-42a792e24d32'},
-  {id:'deluxe',name:'Deluxe Room',price:1500,capacity:2,size:'30–35',bed:'เตียงคิงไซส์',image:'photo-1590490360182-c33d57733427'},
-  {id:'superior',name:'Superior Room',price:2000,capacity:3,size:'25–30',bed:'เตียงคิงไซส์',image:'photo-1566665797739-1674de7a421a'},
-  {id:'family',name:'Family Room',price:4500,capacity:6,size:'40–50',bed:'เตียงคู่สำหรับครอบครัว',image:'photo-1566073771259-6a8506099945'}
+  { id: 'standard', name: 'Standard Room', price: 1000, capacity: 2, size: '18–25', bed: 'เตียงควีนไซส์', roomNo: 'ห้อง 101', image: 'photo-1611892440504-42a792e24d32' },
+  { id: 'superior', name: 'Superior Room', price: 1500, capacity: 2, size: '25–30', bed: 'เตียงคิงไซส์', roomNo: 'ห้อง 201', image: 'photo-1566665797739-1674de7a421a' },
+  { id: 'deluxe', name: 'Deluxe Room', price: 2000, capacity: 2, size: '30–40', bed: 'เตียงคิงไซส์', roomNo: 'ห้อง 301', image: 'photo-1590490360182-c33d57733427' },
+  { id: 'family', name: 'Family Room', price: 4500, capacity: 4, size: '35–50', bed: 'เตียงคู่สำหรับครอบครัว', roomNo: 'ห้อง 401', image: 'photo-1566073771259-6a8506099945' }
 ];
 
 const money = value => value.toLocaleString('th-TH');
@@ -155,7 +155,7 @@ document.querySelectorAll('#main-nav a').forEach(link => {
 window.addEventListener('hashchange', updatePage);
 updatePage();
 
-/* Facilities Section (สลับสถานะปุ่มจองเป็นสีเขียว "จองแล้ว • ยกเลิก") */
+/* Facilities Section */
 const facilityInfo = {
   fitness: { name: 'ฟิตเนส (Fitness Center)', time: 'เปิดบริการตั้งแต่เวลา 07:00 - 21:30 น.' },
   sauna: { name: 'ซาวน่า (Sauna)', time: 'เปิดบริการตั้งแต่เวลา 07:00 - 21:30 น.' },
@@ -198,7 +198,7 @@ $('#facility-form')?.addEventListener('submit', event => {
   toast('จองบริการสำเร็จเรียบร้อยแล้ว');
 });
 
-/* ระบบควบคุมการเปิด Modal จองห้องพักแบบใหม่ (ตรงตามภาพ 11.jpg) */
+/* Modal จองห้องพัก */
 let selectedRoom = null;
 
 function updateModalTotal() {
@@ -213,7 +213,6 @@ function updateModalTotal() {
 
   let total = selectedRoom.price * nights;
   
-  // เพิ่มอาหารเช้า 350 บาท ต่อคน ต่อคืน (ถ้าเลือก)
   if ($('#modal-breakfast-checkbox')?.checked) {
     const guests = Number($('#guests')?.value || 2);
     total += (350 * guests * nights);
@@ -232,26 +231,26 @@ $('#room-grid')?.addEventListener('click', event => {
   if (!room) return;
   selectedRoom = room;
 
-  // ตั้งค่าข้อมูลการ์ดใน Modal
-  if ($('#modal-room-header-title')) $('#modal-room-header-title').textContent = `จอง ${room.name}`;
+  if ($('#modal-room-header-title')) $('#modal-room-header-title').textContent = room.name;
   if ($('#modal-room-name')) $('#modal-room-name').textContent = room.name;
   if ($('#modal-room-img')) $('#modal-room-img').src = `https://images.unsplash.com/${room.image}?auto=format&fit=crop&w=400&q=80`;
-  if ($('#modal-room-subtext')) $('#modal-room-subtext').textContent = `${room.roomNo} ${room.size}ตร.ม. 1-${room.capacity} คน`;
+  if ($('#modal-room-subtext')) $('#modal-room-subtext').textContent = `${room.roomNo} ${room.size.replace('–', ' - ')}ตร.ม. 1-${room.capacity} คน`;
   if ($('#modal-room-price')) $('#modal-room-price').textContent = money(room.price);
 
-  // ดึงวันที่จากค้นหาหลัก (ถ้ามี)
-  const mainIn = $('#checkin')?.value || today;
-  const mainOut = $('#checkout')?.value || addDay(today);
+  const mainIn = $('#checkin')?.value || '';
+  const mainOut = $('#checkout')?.value || '';
 
   const mIn = $('#modal-checkin');
   const mOut = $('#modal-checkout');
 
   if (mIn) {
+    mIn.type = mainIn ? 'date' : 'text';
     mIn.min = today;
     mIn.value = mainIn;
   }
   if (mOut) {
-    mOut.min = addDay(mainIn);
+    mOut.type = mainOut ? 'date' : 'text';
+    mOut.min = mainIn ? addDay(mainIn) : addDay(today);
     mOut.value = mainOut;
   }
 
@@ -265,13 +264,15 @@ $('#room-grid')?.addEventListener('click', event => {
   $('#booking-dialog')?.showModal();
 });
 
-// คำนวณราคาทันทีเมื่อเปลี่ยนวัน หรือ ติ๊กเพิ่มอาหารเช้า
 $('#modal-checkin')?.addEventListener('change', () => {
   const mIn = $('#modal-checkin');
   const mOut = $('#modal-checkout');
   if (mIn?.value && mOut) {
     mOut.min = addDay(mIn.value);
-    if (mOut.value <= mIn.value) mOut.value = addDay(mIn.value);
+    if (mOut.value && mOut.value <= mIn.value) {
+      mOut.type = 'date';
+      mOut.value = addDay(mIn.value);
+    }
   }
   updateModalTotal();
 });
@@ -279,7 +280,6 @@ $('#modal-checkin')?.addEventListener('change', () => {
 $('#modal-checkout')?.addEventListener('change', updateModalTotal);
 $('#modal-breakfast-checkbox')?.addEventListener('change', updateModalTotal);
 
-// แสดงชื่อไฟล์สลิปเมื่อผู้ใช้เลือกไฟล์
 $('#slip-upload-input')?.addEventListener('change', event => {
   const file = event.target.files[0];
   if (file && $('#slip-file-name')) {
@@ -287,13 +287,43 @@ $('#slip-upload-input')?.addEventListener('change', event => {
   }
 });
 
-// ยืนยันการจอง
 $('#booking-form')?.addEventListener('submit', event => {
   event.preventDefault();
   $('#booking-dialog')?.close();
   event.target.reset();
   if ($('#slip-file-name')) $('#slip-file-name').textContent = 'อัปโหลดหลักฐานการจอง';
   toast('ส่งหลักฐานการจองสำเร็จ — ระบบจำลองยังไม่มีการเรียกเก็บเงินจริง');
+});
+
+/* ระบบเข้าสู่ระบบ */
+document.querySelectorAll('[data-login]').forEach(button => {
+  button.addEventListener('click', () => {
+    const userType = button.dataset.login;
+    const loginTitle = $('#login-title');
+    const regWrapper = $('#register-link-wrapper');
+
+    if (userType === 'พนักงาน') {
+      if (loginTitle) loginTitle.textContent = 'เข้าสู่ระบบพนักงาน';
+      if (regWrapper) regWrapper.hidden = true;
+    } else {
+      if (loginTitle) loginTitle.textContent = 'เข้าสู่ระบบ';
+      if (regWrapper) regWrapper.hidden = false;
+    }
+
+    $('#login-dialog')?.showModal();
+  });
+});
+
+$('#login-form')?.addEventListener('submit', event => {
+  event.preventDefault();
+  $('#login-dialog')?.close();
+  event.target.reset();
+  toast('เข้าสู่ระบบสำเร็จ (โหมดจำลอง UX/UI)');
+});
+
+$('#open-register-link')?.addEventListener('click', event => {
+  event.preventDefault();
+  toast('ระบบจำลองสมัครสมาชิกอยู่ระหว่างการพัฒนา');
 });
 
 /* Live Chat */
@@ -358,20 +388,6 @@ function toast(message) {
     toastEl.hidden = true;
   }, 5500);
 }
-
-document.querySelectorAll('[data-login]').forEach(button => {
-  button.addEventListener('click', () => {
-    if ($('#login-title')) $('#login-title').textContent = `เข้าสู่ระบบ${button.dataset.login}`;
-    $('#login-dialog')?.showModal();
-  });
-});
-
-$('#login-form')?.addEventListener('submit', event => {
-  event.preventDefault();
-  $('#login-dialog')?.close();
-  event.target.reset();
-  toast('หน้าตัวอย่างพร้อมใช้งาน — ยังไม่เชื่อมต่อระบบเข้าสู่ระบบ');
-});
 
 document.querySelectorAll('[data-close]').forEach(button => {
   button.addEventListener('click', () => button.closest('dialog')?.close());

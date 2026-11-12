@@ -186,4 +186,121 @@
       <p class="message staff">สวัสดีค่ะ ยินดีต้อนรับสู่ TKC 🌴<br>สนใจสอบถามห้องพักหรือบริการด้านไหนคะ?</p>
     </div>
     <form id="chat-form">
-      <label class="sr-
+      <label class="sr-only" for="chat-input">ข้อความถึงพนักงาน</label>
+      <input id="chat-input" placeholder="พิมพ์ข้อความถึงพนักงาน" maxlength="1000" required autocomplete="off">
+      <button class="primary" aria-label="ส่งข้อความ"><svg><use href="#send"/></svg></button>
+    </form>
+  </aside>
+
+  <button class="chat-launcher" id="chat-toggle" aria-expanded="false" aria-controls="chat-panel"><svg><use href="#chat"/></svg><span>พูดคุยกับพนักงาน</span></button>
+
+  <!-- Room Booking Dialog (ถอดแบบตรงตามภาพ 11_2.jpg) -->
+  <dialog id="booking-dialog" class="custom-booking-modal">
+    <button class="modal-circle-close" data-close aria-label="ปิด">✕</button>
+    
+    <div class="modal-header-custom">
+      <h2>จอง <span id="modal-room-header-title" class="serif-title">Standard Room</span></h2>
+    </div>
+
+    <form id="booking-form" class="modal-booking-body">
+      <div class="room-preview-box">
+        <img id="modal-room-img" src="" alt="Room preview" class="room-preview-img">
+        <div class="room-preview-details">
+          <h3 id="modal-room-name" class="serif-title">Standard Room</h3>
+          <p id="modal-room-subtext" class="subtext">ห้อง 101 18 - 25ตร.ม. 1-2 คน</p>
+          <p class="modal-price-line">
+            <strong id="modal-room-price">1,000</strong> <span class="unit">บาท / คืน</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="modal-dates-grid">
+        <div class="date-field">
+          <label for="modal-checkin">เช็คอิน</label>
+          <input type="text" id="modal-checkin" onfocus="(this.type='date')" onblur="if(!this.value)this.type='text'" required>
+        </div>
+        <div class="date-field">
+          <label for="modal-checkout">เช็คเอ้าท์</label>
+          <input type="text" id="modal-checkout" onfocus="(this.type='date')" onblur="if(!this.value)this.type='text'" required>
+        </div>
+      </div>
+
+      <p id="modal-capacity-notice" class="capacity-notice">
+        รายการจองนี้ผูกกับลูกค้า 1 ราย ห้องพัก 1 ห้อง และรองรับผู้เข้าพัก 2 คน โดยระบบได้ทำการตรวจสอบการจองซ้ำแล้ว
+      </p>
+
+      <label class="breakfast-checkbox-label">
+        <input type="checkbox" id="modal-breakfast-checkbox">
+        <span>เพิ่มอาหารเช้า 350 บาท</span>
+      </label>
+
+      <!-- กล่องสีขาวสำหรับชำระเงินและอัปโหลดสลิปตามภาพ 11_2.jpg -->
+      <div class="payment-card-box">
+        <h4 class="pay-title">ชำระเงิน</h4>
+        <div class="pay-details-row">
+          <div class="bank-info">
+            <p class="bank-name">ธนาคารกรุงไทย</p>
+            <p class="bank-acc">123-456-78910</p>
+          </div>
+          <div class="total-info">
+            <p class="hotel-tag">TKC NEVER WEKES HOTEL</p>
+            <p class="total-price"><strong id="modal-total-price">1,000</strong> <span class="unit">บาท</span></p>
+          </div>
+        </div>
+
+        <label for="slip-upload-input" class="slip-upload-box">
+          <svg><use href="#upload"/></svg>
+          <span id="slip-file-name">อัปโหลดหลักฐานการจอง</span>
+          <input type="file" id="slip-upload-input" accept="image/*">
+        </label>
+      </div>
+
+      <button type="submit" class="submit-booking-btn">ยืนยันการจองและส่งสลิป</button>
+    </form>
+  </dialog>
+
+  <!-- Login Dialog -->
+  <dialog id="login-dialog" class="custom-login-modal">
+    <button class="modal-circle-close" data-close aria-label="ปิด">✕</button>
+    
+    <div class="login-header-custom">
+      <h2 id="login-title">เข้าสู่ระบบ</h2>
+    </div>
+
+    <form id="login-form" class="login-form-body">
+      <div class="login-input-group">
+        <label for="login-email">อีเมล</label>
+        <input type="email" id="login-email" placeholder="ตัวอย่าง : pualbyoujud@gmail.com" required autocomplete="username">
+      </div>
+
+      <div class="login-input-group">
+        <label for="login-password">รหัสผ่าน</label>
+        <input type="password" id="login-password" placeholder="อย่างน้อย 8 ตัวอักษร" minlength="8" required autocomplete="current-password">
+      </div>
+
+      <button type="submit" class="submit-login-btn">เข้าสู่ระบบ</button>
+
+      <div id="register-link-wrapper" class="register-link-container">
+        <span>ยังไม่มีบัญชี ? </span>
+        <a href="#register" id="open-register-link">สมัครสมาชิก</a>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Facility Booking Dialog -->
+  <dialog id="facility-dialog">
+    <button class="dialog-close" data-close aria-label="ปิด">×</button>
+    <p class="eyebrow">FACILITIES BOOKING</p>
+    <h2 id="facility-title">จองบริการ</h2>
+    <p id="facility-summary"></p>
+    <form id="facility-form">
+      <label>วันที่ต้องการจอง<input type="date" id="facility-date" required></label>
+      <label>ช่วงเวลา / จำนวนผู้ใช้บริการ<input type="text" placeholder="เช่น 18:30 น. (2 คน)" required></label>
+      <p class="demo-note">แบบฟอร์มตัวอย่าง ข้อมูลจะไม่ถูกส่งหรือบันทึก</p>
+      <button class="primary">ยืนยันการจองบริการ</button>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>
