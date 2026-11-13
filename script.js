@@ -2,6 +2,237 @@
 
 const $ = selector => document.querySelector(selector);
 
+/* ==================== เมนู Responsive บนมือถือและไอแพด ==================== */
+const menuToggle = $('#menu-toggle');
+const mainNav = $('#main-nav');
+
+menuToggle?.addEventListener('click', () => {
+  const isOpen = mainNav?.classList.toggle('open');
+  menuToggle.setAttribute('aria-expanded', String(Boolean(isOpen)));
+});
+
+// ปิดเมนูอัตโนมัติเมื่อกดเลือกลิงก์ในหน้าจอมือถือ/ไอแพด
+mainNav?.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => {
+    mainNav.classList.remove('open');
+    menuToggle?.setAttribute('aria-expanded', 'false');
+  });
+});
+
+/* ==================== ฐานข้อมูลพนักงานแยกตามฝ่าย (Role-Based Access) ==================== */
+const staffAccounts = [
+  { email: 'admin@tkc.com', password: '12345678', role: 'superadmin', roleLabel: 'Super Admin', name: 'คุณสมชาย (ผู้ดูแลระบบสูงสุด)' },
+  { email: 'reception@tkc.com', password: '12345678', role: 'reception', roleLabel: 'ฝ่ายต้อนรับ', name: 'คุณสุดา (หัวหน้าฝ่ายต้อนรับ)' },
+  { email: 'account@tkc.com', password: '12345678', role: 'accounting', roleLabel: 'ฝ่ายบัญชี', name: 'คุณวิภา (เจ้าหน้าที่บัญชี)' },
+  { email: 'exec@tkc.com', password: '12345678', role: 'executive', roleLabel: 'ฝ่ายบริหาร', name: 'คุณอรทัย พ. (ฝ่ายบริหาร)' }
+];
+
+let currentStaffSession = null;
+let currentLoginMode = 'ลูกค้า';
+
+// Template ประวัติการจองย้อนหลังที่ใช้ร่วมกัน
+function getBookingHistoryHTML(prefix) {
+  return `
+    <div class="admin-card-header">
+      <div>
+        <h3>ประวัติการจองย้อนหลัง</h3>
+        <p>เก็บข้อมูลลูกค้า ห้อง วันที่ ค่าใช้จ่าย การชำระเงิน และทุกสถานะของรายการจอง</p>
+      </div>
+      <span class="count-pill">2 รายการ</span>
+    </div>
+
+    <div class="history-split-grid">
+      <div class="history-list">
+        <div class="history-item active" id="${prefix}-hist-1" onclick="selectSharedBooking('${prefix}', 1)">
+          <div>
+            <strong>BKG-23984</strong>
+            <p>ณัฐวดี พรหมมา · ห้อง 201</p>
+            <small>2026-05-12 → 2026-05-14</small>
+          </div>
+          <span class="status-badge green">เช็คเอาท์แล้ว</span>
+        </div>
+        <div class="history-item" id="${prefix}-hist-2" onclick="selectSharedBooking('${prefix}', 2)">
+          <div>
+            <strong>BKG-23951</strong>
+            <p>ธนกร วัฒนชัย · ห้อง 402</p>
+            <small>2026-04-03 → 2026-04-05</small>
+          </div>
+          <span class="status-badge red-soft">ยกเลิก</span>
+        </div>
+      </div>
+
+      <div class="history-detail-box" id="${prefix}-detail-pane">
+        ${getBookingRecordDetail(1)}
+      </div>
+    </div>
+  `;
+}
+
+function getBookingRecordDetail(recordId) {
+  if (recordId === 1) {
+    return `
+      <div class="hd-top">
+        <div>
+          <small class="hd-code">BOOKING RECORD · BKG-23984</small>
+          <h4>ณัฐวดี พรหมมา</h4>
+          <p>nattawadee@example.com · 089-245-7812</p>
+          <small class="hd-guest-id">รหัสลูกค้า GUEST-0182</small>
+        </div>
+        <span class="status-badge green">เช็คเอาท์แล้ว</span>
+      </div>
+      <div class="hd-info-cards">
+        <div class="hd-mini-card"><small>ห้องพัก</small><strong>Superior Room</strong><span>ห้อง 201 · 2 คน</span></div>
+        <div class="hd-mini-card"><small>Check-in</small><strong>2026-05-12</strong></div>
+        <div class="hd-mini-card"><small>Check-out</small><strong>2026-05-14</strong></div>
+      </div>
+      <div class="hd-bottom-grid">
+        <div>
+          <h5>รายการค่าใช้จ่าย</h5>
+          <div class="cost-line"><span>Superior Room · 2 คืน <small>ห้องพัก</small></span><strong>฿3,000</strong></div>
+          <div class="cost-line"><span>อาหารเช้า 2 คน <small>อาหารเช้า</small></span><strong>฿700</strong></div>
+          <div class="cost-line"><span>อบซาวน่า <small>บริการเสริม</small></span><strong>฿450</strong></div>
+          <div class="cost-total"><span>รวมทั้งหมด</span><strong>฿4,150</strong></div>
+          <h5 class="mt-16">ประวัติการชำระเงิน</h5>
+          <div class="pay-slip-row"><div><strong>PAY-67214</strong><small>มัดจำ · ตรวจสอบแล้ว</small></div><strong>฿2,075</strong></div>
+          <div class="pay-slip-row"><div><strong>PAY-67302</strong><small>ยอดคงเหลือ · ตรวจสอบแล้ว</small></div><strong>฿2,075</strong></div>
+          <p class="paid-summary">ชำระแล้ว ฿4,150 / ฿4,150</p>
+        </div>
+        <div>
+          <h5>ลำดับสถานะย้อนหลัง</h5>
+          <ul class="timeline-list">
+            <li><span class="dot"></span><div><strong>รอตรวจสอบ</strong><small>2026-04-28 14:20</small><small>ดำเนินการโดย ลูกค้า</small></div></li>
+            <li><span class="dot"></span><div><strong>ยืนยันแล้ว</strong><small>2026-04-28 15:05</small><small>ดำเนินการโดย ฝ่ายบัญชี</small></div></li>
+            <li><span class="dot"></span><div><strong>เช็คเอาท์แล้ว</strong><small>2026-05-14 11:12</small><small>ดำเนินการโดย ฝ่ายต้อนรับ</small></div></li>
+          </ul>
+        </div>
+      </div>
+    `;
+  }
+  return `
+    <div class="hd-top">
+      <div>
+        <small class="hd-code">BOOKING RECORD · BKG-23951</small>
+        <h4>ธนกร วัฒนชัย</h4>
+        <p>thanakorn@example.com · 081-992-4410</p>
+        <small class="hd-guest-id">รหัสลูกค้า GUEST-0154</small>
+      </div>
+      <span class="status-badge red-soft">ยกเลิก</span>
+    </div>
+    <div class="hd-info-cards">
+      <div class="hd-mini-card"><small>ห้องพัก</small><strong>Family Room</strong><span>ห้อง 402 · 4 คน</span></div>
+      <div class="hd-mini-card"><small>Check-in</small><strong>2026-04-03</strong></div>
+      <div class="hd-mini-card"><small>Check-out</small><strong>2026-04-05</strong></div>
+    </div>
+    <div class="hd-bottom-grid">
+      <div>
+        <h5>รายการค่าใช้จ่าย</h5>
+        <div class="cost-line"><span>Family Room · 2 คืน <small>ห้องพัก</small></span><strong>฿9,000</strong></div>
+        <div class="cost-total"><span>รวมทั้งหมด</span><strong>฿9,000</strong></div>
+        <p class="paid-summary" style="color:#dc2626;">ยกเลิกรายการก่อนชำระเงิน</p>
+      </div>
+      <div>
+        <h5>ลำดับสถานะย้อนหลัง</h5>
+        <ul class="timeline-list">
+          <li><span class="dot"></span><div><strong>สร้างรายการจอง</strong><small>2026-03-29 10:15</small><small>ดำเนินการโดย ลูกค้า</small></div></li>
+          <li><span class="dot" style="background:#ef4444;"></span><div><strong>ยกเลิกรายการ</strong><small>2026-03-30 09:00</small><small>ดำเนินการโดย ลูกค้า</small></div></li>
+        </ul>
+      </div>
+    </div>
+  `;
+}
+
+window.selectSharedBooking = function(prefix, recordId) {
+  $(`#${prefix}-hist-1`)?.classList.toggle('active', recordId === 1);
+  $(`#${prefix}-hist-2`)?.classList.toggle('active', recordId === 2);
+  const pane = $(`#${prefix}-detail-pane`);
+  if (pane) pane.innerHTML = getBookingRecordDetail(recordId);
+};
+
+if ($('#shared-booking-history-superadmin')) $('#shared-booking-history-superadmin').innerHTML = getBookingHistoryHTML('sa');
+if ($('#shared-booking-history-reception')) $('#shared-booking-history-reception').innerHTML = getBookingHistoryHTML('rec');
+if ($('#shared-booking-history-executive')) $('#shared-booking-history-executive').innerHTML = getBookingHistoryHTML('exec');
+
+// แชตในหน้าฝ่ายต้อนรับ
+$('#rec-chat-form')?.addEventListener('submit', event => {
+  event.preventDefault();
+  const input = $('#rec-chat-input');
+  const text = input?.value.trim();
+  if (!text) return;
+
+  const box = $('#rec-chat-box');
+  const now = new Date();
+  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  const msg = document.createElement('div');
+  msg.className = 'rec-msg staff';
+  msg.innerHTML = `<p>${text}</p><small>${timeStr} · ฝ่ายต้อนรับ</small>`;
+  box?.appendChild(msg);
+
+  if (input) input.value = '';
+  if (box) box.scrollTop = box.scrollHeight;
+});
+
+// ฟังก์ชันช่วยกรอกบัญชีทดสอบ
+window.fillStaffDemo = function(email, password) {
+  if ($('#login-email')) $('#login-email').value = email;
+  if ($('#login-password')) $('#login-password').value = password;
+  if ($('#login-error-msg')) $('#login-error-msg').hidden = true;
+};
+
+// เปิดระบบพนักงานและล็อกสิทธิ์เฉพาะฝ่ายนั้น
+function enterStaffSystem(staffUser) {
+  currentStaffSession = staffUser;
+
+  $('#public-site-view').hidden = true;
+  $('#staff-system-view').hidden = false;
+
+  if ($('#logged-in-staff-name')) $('#logged-in-staff-name').textContent = staffUser.name;
+  if ($('#logged-in-staff-role')) $('#logged-in-staff-role').textContent = staffUser.roleLabel;
+
+  document.querySelectorAll('.staff-nav-item').forEach(btn => {
+    const btnRole = btn.dataset.role;
+    if (btnRole === staffUser.role) {
+      btn.classList.add('active');
+      btn.classList.remove('locked');
+    } else {
+      btn.classList.remove('active');
+      btn.classList.add('locked');
+    }
+  });
+
+  document.querySelectorAll('.staff-role-panel').forEach(panel => {
+    panel.hidden = (panel.id !== `panel-${staffUser.role}`);
+  });
+
+  window.scrollTo(0, 0);
+  toast(`ยินดีต้อนรับเข้าสู่ระบบ ${staffUser.roleLabel}`);
+}
+
+// ป้องกันการกดข้ามไปฝ่ายอื่นใน Sidebar
+document.querySelectorAll('.staff-nav-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!currentStaffSession) return;
+    const targetRole = btn.dataset.role;
+
+    if (targetRole !== currentStaffSession.role) {
+      toast(`⛔ ปฏิเสธการเข้าถึง: บัญชีของคุณมีสิทธิ์เฉพาะ "${currentStaffSession.roleLabel}" เท่านั้น`);
+    }
+  });
+});
+
+// ปุ่ม "กลับสู่หน้าหลัก" (รองรับทั้งปุ่มบนคอมและปุ่มบนมือถือ/ไอแพด)
+function handleBackToHome() {
+  currentStaffSession = null;
+  $('#staff-system-view').hidden = true;
+  $('#public-site-view').hidden = false;
+  window.scrollTo(0, 0);
+  toast('ออกจากระบบพนักงานและกลับสู่หน้าหลักแล้ว');
+}
+
+$('#btn-back-to-home')?.addEventListener('click', handleBackToHome);
+$('#btn-back-to-home-mobile')?.addEventListener('click', handleBackToHome);
+
+/* ==================== ระบบห้องพักและการค้นหา ==================== */
 const rooms = [
   { id: 'standard', name: 'Standard Room', price: 1000, capacity: 2, size: '18–25', bed: 'เตียงควีนไซส์', roomNo: 'ห้อง 101', image: 'photo-1611892440504-42a792e24d32' },
   { id: 'superior', name: 'Superior Room', price: 1500, capacity: 2, size: '25–30', bed: 'เตียงคิงไซส์', roomNo: 'ห้อง 201', image: 'photo-1566665797739-1674de7a421a' },
@@ -18,7 +249,7 @@ function renderRooms(list) {
   if (roomGrid) {
     roomGrid.innerHTML = list.map(room => `
       <article class="room-card">
-        <img class="room-photo" src="https://images.unsplash.com/${room.image}?auto=format&fit=crop&w=900&q=85" alt="ตัวอย่างบรรยากาศ ${room.name}" loading="lazy">
+        <img class="room-photo" src="https://images.unsplash.com/${room.image}?auto=format&fit=crop&w=900&q=85" alt="${room.name}" loading="lazy">
         <div class="room-info">
           <h3>${room.name}</h3>
           <p class="price"><strong>${money(room.price)}</strong> บาท <small>/ คืน</small></p>
@@ -37,9 +268,7 @@ function renderRooms(list) {
     `).join('');
   }
 
-  if (emptyState) {
-    emptyState.hidden = list.length > 0;
-  }
+  if (emptyState) emptyState.hidden = list.length > 0;
 }
 
 renderRooms(rooms);
@@ -56,149 +285,29 @@ const today = localDate(new Date());
 if ($('#checkin')) $('#checkin').min = today;
 if ($('#checkout')) $('#checkout').min = addDay(today);
 
-function datesValid() {
-  const searchError = $('#search-error');
-  if (searchError) searchError.textContent = '';
-  
-  const checkinVal = $('#checkin')?.value;
-  const checkoutVal = $('#checkout')?.value;
-
-  if (!checkinVal || !checkoutVal) return false;
-  
-  if (checkinVal < today) {
-    if (searchError) searchError.textContent = 'กรุณาเลือกวันเช็คอินตั้งแต่วันนี้เป็นต้นไป';
-    return false;
-  }
-  
-  if (checkoutVal <= checkinVal) {
-    if (searchError) searchError.textContent = 'วันเช็คเอาท์ต้องอยู่หลังวันเช็คอิน';
-    return false;
-  }
-  
-  return true;
-}
-
-$('#checkin')?.addEventListener('change', () => {
-  const checkinInput = $('#checkin');
-  const checkoutInput = $('#checkout');
-  
-  if (!checkinInput?.value) return;
-  
-  if (checkoutInput) {
-    checkoutInput.min = addDay(checkinInput.value);
-    if (checkoutInput.value && checkoutInput.value <= checkinInput.value) {
-      checkoutInput.value = addDay(checkinInput.value);
-    }
-  }
-  
-  const searchError = $('#search-error');
-  if (searchError) searchError.textContent = '';
-});
-
 $('#search-form')?.addEventListener('submit', event => {
   event.preventDefault();
-  if (!datesValid()) return;
-
   const type = $('#room-type')?.value;
   const guests = Number($('#guests')?.value || 1);
-  
   const filtered = rooms.filter(room => (type === 'all' || room.id === type) && room.capacity >= guests);
-  
   renderRooms(filtered);
-  
-  if ($('#rooms-title')) $('#rooms-title').textContent = 'ห้องพักที่เหมาะกับวันพักผ่อนของคุณ';
-  if ($('#results-status')) {
-    $('#results-status').textContent = `พบ ${filtered.length} ประเภทห้อง · ${guests} คน · ${formatDate($('#checkin').value)} – ${formatDate($('#checkout').value)} · ตัวอย่างข้อมูล ยังไม่ใช่จำนวนห้องว่างจริง`;
-  }
-  
   if ($('#reset-search')) $('#reset-search').hidden = false;
-  
-  location.hash = 'rooms';
   $('#rooms')?.scrollIntoView({ behavior: 'smooth' });
 });
 
-function resetRooms() {
+$('#reset-search')?.addEventListener('click', () => {
   renderRooms(rooms);
   if ($('#room-type')) $('#room-type').value = 'all';
-  if ($('#rooms-title')) $('#rooms-title').textContent = 'เลือกห้องพักที่เหมาะกับคุณ';
-  if ($('#results-status')) $('#results-status').textContent = '';
   if ($('#reset-search')) $('#reset-search').hidden = true;
-}
-
-$('#reset-search')?.addEventListener('click', resetRooms);
-$('#empty-reset')?.addEventListener('click', resetRooms);
-
-function formatDate(value) {
-  return parseDate(value).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-$('#menu-toggle')?.addEventListener('click', () => {
-  const nav = $('#main-nav');
-  const open = nav ? nav.classList.toggle('open') : false;
-  $('#menu-toggle').setAttribute('aria-expanded', String(open));
 });
 
-function updatePage() {
-  const current = location.hash.slice(1) || 'home';
-  document.querySelectorAll('[data-page]').forEach(link => {
-    link.classList.toggle('active', link.dataset.page === current);
-  });
-}
-
-document.querySelectorAll('#main-nav a').forEach(link => {
-  link.addEventListener('click', () => {
-    $('#main-nav')?.classList.remove('open');
-    $('#menu-toggle')?.setAttribute('aria-expanded', 'false');
-  });
+$('#empty-reset')?.addEventListener('click', () => {
+  renderRooms(rooms);
+  if ($('#room-type')) $('#room-type').value = 'all';
+  if ($('#reset-search')) $('#reset-search').hidden = true;
 });
 
-window.addEventListener('hashchange', updatePage);
-updatePage();
-
-/* Facilities Section */
-const facilityInfo = {
-  fitness: { name: 'ฟิตเนส (Fitness Center)', time: 'เปิดบริการตั้งแต่เวลา 07:00 - 21:30 น.' },
-  sauna: { name: 'ซาวน่า (Sauna)', time: 'เปิดบริการตั้งแต่เวลา 07:00 - 21:30 น.' },
-  sunset: { name: 'ชมพระอาทิตย์ตก (Watch The Sunset)', time: 'เปิดให้จองในเวลา 18:00 น.' },
-  market: { name: 'ตลาดกลางคืน (Night Market)', time: 'เปิดให้จองในเวลา 18:00 น.' }
-};
-
-let activeFacilityBtn = null;
-
-document.querySelectorAll('[data-facility]').forEach(button => {
-  button.addEventListener('click', () => {
-    if (button.classList.contains('booked')) {
-      button.classList.remove('booked');
-      button.textContent = 'จอง';
-      toast('ยกเลิกการจองบริการเรียบร้อยแล้ว');
-      return;
-    }
-
-    activeFacilityBtn = button;
-    const key = button.dataset.facility;
-    const info = facilityInfo[key];
-
-    if (info) {
-      if ($('#facility-title')) $('#facility-title').textContent = info.name;
-      if ($('#facility-summary')) $('#facility-summary').textContent = info.time;
-      if ($('#facility-date')) $('#facility-date').min = today;
-      $('#facility-dialog')?.showModal();
-    }
-  });
-});
-
-$('#facility-form')?.addEventListener('submit', event => {
-  event.preventDefault();
-  if (activeFacilityBtn) {
-    activeFacilityBtn.classList.add('booked');
-    activeFacilityBtn.textContent = 'จองแล้ว • ยกเลิก';
-  }
-  $('#facility-dialog')?.close();
-  event.target.reset();
-  toast('จองบริการสำเร็จเรียบร้อยแล้ว');
-});
-
-/* Modal จองห้องพัก */
+/* ==================== Modal จองห้องพัก ==================== */
 let selectedRoom = null;
 
 function updateModalTotal() {
@@ -212,15 +321,12 @@ function updateModalTotal() {
   }
 
   let total = selectedRoom.price * nights;
-  
   if ($('#modal-breakfast-checkbox')?.checked) {
     const guests = Number($('#guests')?.value || 2);
     total += (350 * guests * nights);
   }
 
-  if ($('#modal-total-price')) {
-    $('#modal-total-price').textContent = money(total);
-  }
+  if ($('#modal-total-price')) $('#modal-total-price').textContent = money(total);
 }
 
 $('#room-grid')?.addEventListener('click', event => {
@@ -237,54 +343,18 @@ $('#room-grid')?.addEventListener('click', event => {
   if ($('#modal-room-subtext')) $('#modal-room-subtext').textContent = `${room.roomNo} ${room.size.replace('–', ' - ')}ตร.ม. 1-${room.capacity} คน`;
   if ($('#modal-room-price')) $('#modal-room-price').textContent = money(room.price);
 
-  const mainIn = $('#checkin')?.value || '';
-  const mainOut = $('#checkout')?.value || '';
-
-  const mIn = $('#modal-checkin');
-  const mOut = $('#modal-checkout');
-
-  if (mIn) {
-    mIn.type = mainIn ? 'date' : 'text';
-    mIn.min = today;
-    mIn.value = mainIn;
-  }
-  if (mOut) {
-    mOut.type = mainOut ? 'date' : 'text';
-    mOut.min = mainIn ? addDay(mainIn) : addDay(today);
-    mOut.value = mainOut;
-  }
-
-  if ($('#modal-capacity-notice')) {
-    $('#modal-capacity-notice').textContent = `รายการจองนี้ผูกกับลูกค้า 1 ราย ห้องพัก 1 ห้อง และรองรับผู้เข้าพัก ${room.capacity} คน โดยระบบได้ทำการตรวจสอบการจองซ้ำแล้ว`;
-  }
-
   if ($('#modal-breakfast-checkbox')) $('#modal-breakfast-checkbox').checked = false;
-
   updateModalTotal();
   $('#booking-dialog')?.showModal();
 });
 
-$('#modal-checkin')?.addEventListener('change', () => {
-  const mIn = $('#modal-checkin');
-  const mOut = $('#modal-checkout');
-  if (mIn?.value && mOut) {
-    mOut.min = addDay(mIn.value);
-    if (mOut.value && mOut.value <= mIn.value) {
-      mOut.type = 'date';
-      mOut.value = addDay(mIn.value);
-    }
-  }
-  updateModalTotal();
-});
-
-$('#modal-checkout')?.addEventListener('change', updateModalTotal);
 $('#modal-breakfast-checkbox')?.addEventListener('change', updateModalTotal);
+$('#modal-checkin')?.addEventListener('change', updateModalTotal);
+$('#modal-checkout')?.addEventListener('change', updateModalTotal);
 
 $('#slip-upload-input')?.addEventListener('change', event => {
   const file = event.target.files[0];
-  if (file && $('#slip-file-name')) {
-    $('#slip-file-name').textContent = `สลิป: ${file.name}`;
-  }
+  if (file && $('#slip-file-name')) $('#slip-file-name').textContent = `สลิป: ${file.name}`;
 });
 
 $('#booking-form')?.addEventListener('submit', event => {
@@ -292,22 +362,29 @@ $('#booking-form')?.addEventListener('submit', event => {
   $('#booking-dialog')?.close();
   event.target.reset();
   if ($('#slip-file-name')) $('#slip-file-name').textContent = 'อัปโหลดหลักฐานการจอง';
-  toast('ส่งหลักฐานการจองสำเร็จ — ระบบจำลองยังไม่มีการเรียกเก็บเงินจริง');
+  toast('ส่งหลักฐานการจองสำเร็จ');
 });
 
-/* ระบบเข้าสู่ระบบ */
+/* ==================== ระบบ Login ลูกค้า / พนักงาน & Register ==================== */
 document.querySelectorAll('[data-login]').forEach(button => {
   button.addEventListener('click', () => {
-    const userType = button.dataset.login;
+    currentLoginMode = button.dataset.login;
     const loginTitle = $('#login-title');
     const regWrapper = $('#register-link-wrapper');
+    const demoBox = $('#staff-demo-accounts');
+    const errText = $('#login-error-msg');
 
-    if (userType === 'พนักงาน') {
+    if (errText) errText.hidden = true;
+    $('#login-form')?.reset();
+
+    if (currentLoginMode === 'พนักงาน') {
       if (loginTitle) loginTitle.textContent = 'เข้าสู่ระบบพนักงาน';
       if (regWrapper) regWrapper.hidden = true;
+      if (demoBox) demoBox.hidden = false;
     } else {
       if (loginTitle) loginTitle.textContent = 'เข้าสู่ระบบ';
       if (regWrapper) regWrapper.hidden = false;
+      if (demoBox) demoBox.hidden = true;
     }
 
     $('#login-dialog')?.showModal();
@@ -316,39 +393,82 @@ document.querySelectorAll('[data-login]').forEach(button => {
 
 $('#login-form')?.addEventListener('submit', event => {
   event.preventDefault();
-  $('#login-dialog')?.close();
-  event.target.reset();
-  toast('เข้าสู่ระบบสำเร็จ (โหมดจำลอง UX/UI)');
+  const email = $('#login-email')?.value.trim().toLowerCase();
+  const password = $('#login-password')?.value;
+  const errText = $('#login-error-msg');
+
+  if (currentLoginMode === 'พนักงาน') {
+    const matchedStaff = staffAccounts.find(acc => acc.email === email && acc.password === password);
+
+    if (!matchedStaff) {
+      if (errText) {
+        errText.textContent = 'อีเมลหรือรหัสผ่านพนักงานไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง';
+        errText.hidden = false;
+      }
+      return;
+    }
+
+    $('#login-dialog')?.close();
+    event.target.reset();
+    enterStaffSystem(matchedStaff);
+  } else {
+    $('#login-dialog')?.close();
+    event.target.reset();
+    toast('เข้าสู่ระบบลูกค้าสำเร็จ');
+  }
 });
 
 $('#open-register-link')?.addEventListener('click', event => {
   event.preventDefault();
-  toast('ระบบจำลองสมัครสมาชิกอยู่ระหว่างการพัฒนา');
+  $('#login-dialog')?.close();
+  $('#register-dialog')?.showModal();
 });
 
-/* Live Chat */
-function toggleChat(open) {
-  const chatPanel = $('#chat-panel');
-  const chatToggle = $('#chat-toggle');
-  
-  if (chatPanel) chatPanel.hidden = !open;
-  if (chatToggle) {
-    chatToggle.setAttribute('aria-expanded', String(open));
-    const label = chatToggle.querySelector('span');
-    if (label) label.textContent = open ? 'ปิดแชต' : 'พูดคุยกับพนักงาน';
+$('#back-to-login-link')?.addEventListener('click', event => {
+  event.preventDefault();
+  $('#register-dialog')?.close();
+  $('#login-dialog')?.showModal();
+});
+
+$('#register-form')?.addEventListener('submit', event => {
+  event.preventDefault();
+  $('#register-dialog')?.close();
+  event.target.reset();
+  toast('สมัครสมาชิกสำเร็จและเข้าสู่ระบบเรียบร้อย');
+});
+
+/* ==================== Facilities & Chat & Toast ==================== */
+let activeFacilityBtn = null;
+document.querySelectorAll('[data-facility]').forEach(button => {
+  button.addEventListener('click', () => {
+    if (button.classList.contains('booked')) {
+      button.classList.remove('booked');
+      button.textContent = 'จอง';
+      toast('ยกเลิกการจองบริการเรียบร้อยแล้ว');
+      return;
+    }
+    activeFacilityBtn = button;
+    $('#facility-dialog')?.showModal();
+  });
+});
+
+$('#facility-form')?.addEventListener('submit', event => {
+  event.preventDefault();
+  if (activeFacilityBtn) {
+    activeFacilityBtn.classList.add('booked');
+    activeFacilityBtn.textContent = 'จองแล้ว • ยกเลิก';
   }
-  if (open) $('#chat-input')?.focus();
-}
-
-$('#chat-toggle')?.addEventListener('click', () => toggleChat($('#chat-panel')?.hidden));
-$('#chat-close')?.addEventListener('click', () => {
-  toggleChat(false);
-  $('#chat-toggle')?.focus();
+  $('#facility-dialog')?.close();
+  event.target.reset();
+  toast('จองบริการสำเร็จเรียบร้อยแล้ว');
 });
 
-document.querySelectorAll('[data-open-chat]').forEach(button => {
-  button.addEventListener('click', () => toggleChat(true));
+$('#chat-toggle')?.addEventListener('click', () => {
+  const panel = $('#chat-panel');
+  if (panel) panel.hidden = !panel.hidden;
 });
+$('#chat-close')?.addEventListener('click', () => { if ($('#chat-panel')) $('#chat-panel').hidden = true; });
+document.querySelectorAll('[data-open-chat]').forEach(b => b.addEventListener('click', () => { if ($('#chat-panel')) $('#chat-panel').hidden = false; }));
 
 $('#chat-form')?.addEventListener('submit', event => {
   event.preventDefault();
@@ -356,66 +476,32 @@ $('#chat-form')?.addEventListener('submit', event => {
   const text = input?.value.trim();
   if (!text) return;
 
-  const chatMessages = $('#chat-messages');
-
-  const userMsg = document.createElement('p');
-  userMsg.className = 'message guest';
-  userMsg.textContent = text;
-  chatMessages?.append(userMsg);
-  
+  const box = $('#chat-messages');
+  const guestMsg = document.createElement('p');
+  guestMsg.className = 'message guest';
+  guestMsg.textContent = text;
+  box?.appendChild(guestMsg);
   if (input) input.value = '';
 
   setTimeout(() => {
-    const replyMsg = document.createElement('p');
-    replyMsg.className = 'message staff';
-    replyMsg.textContent = 'นี่คือแชตตัวอย่าง ข้อความยังไม่ได้ส่งถึงเจ้าหน้าที่ค่ะ สามารถทดลองเลือกห้องและดูสรุปการจองได้จากปุ่ม “จองห้องนี้”';
-    chatMessages?.append(replyMsg);
-    if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
-  }, 400);
+    const reply = document.createElement('p');
+    reply.className = 'message staff';
+    reply.textContent = 'รับทราบข้อความค่ะ เจ้าหน้าที่ฝ่ายต้อนรับกำลังตรวจสอบข้อมูลให้สักครู่นะคะ 🙏';
+    box?.appendChild(reply);
+    if (box) box.scrollTop = box.scrollHeight;
+  }, 600);
 });
 
-/* Toast Notification */
 let toastTimer;
 function toast(message) {
   const toastEl = $('#toast');
   if (!toastEl) return;
-  
   toastEl.textContent = message;
   toastEl.hidden = false;
-  
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    toastEl.hidden = true;
-  }, 5500);
+  toastTimer = setTimeout(() => { toastEl.hidden = true; }, 4500);
 }
 
 document.querySelectorAll('[data-close]').forEach(button => {
   button.addEventListener('click', () => button.closest('dialog')?.close());
-});
-
-document.querySelectorAll('dialog').forEach(dialog => {
-  dialog.addEventListener('click', event => {
-    if (event.target === dialog) {
-      const rect = dialog.getBoundingClientRect();
-      if (
-        event.clientX < rect.left ||
-        event.clientX > rect.right ||
-        event.clientY < rect.top ||
-        event.clientY > rect.bottom
-      ) {
-        dialog.close();
-      }
-    }
-  });
-});
-
-$('#language')?.addEventListener('change', () => {
-  toast('ต้นแบบนี้รองรับภาษาไทยก่อน ภาษาอังกฤษอยู่ระหว่างเตรียมเนื้อหา');
-  if ($('#language')) $('#language').value = 'th';
-});
-
-document.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && $('#chat-panel') && !$('#chat-panel').hidden) {
-    toggleChat(false);
-  }
 });
