@@ -20,14 +20,23 @@ mainNav?.querySelectorAll('a').forEach(link => {
 });
 
 /* ==================== ฐานข้อมูลพนักงานแยกตามฝ่าย (Role-Based Access) ==================== */
-const staffAccounts = [
-  { email: 'admin@tkc.com', password: '12345678', role: 'superadmin', roleLabel: 'Super Admin', name: 'คุณสมชาย (ผู้ดูแลระบบสูงสุด)' },
-  { email: 'reception@tkc.com', password: '12345678', role: 'reception', roleLabel: 'ฝ่ายต้อนรับ', name: 'คุณสุดา (หัวหน้าฝ่ายต้อนรับ)' },
-  { email: 'account@tkc.com', password: '12345678', role: 'accounting', roleLabel: 'ฝ่ายบัญชี', name: 'คุณวิภา (เจ้าหน้าที่บัญชี)' },
-  { email: 'exec@tkc.com', password: '12345678', role: 'executive', roleLabel: 'ฝ่ายบริหาร', name: 'คุณอรทัย พ. (ฝ่ายบริหาร)' },
-  // bykoraphat: บัญชีแม่บ้านสำหรับทดลอง
-  { email: 'housekeeping@tkc.com', password: '12345678', role: 'housekeeping', roleLabel: 'แม่บ้าน', name: 'คุณมะลิ (แม่บ้าน)' }
-];
+// bykoraphat: บัญชีทดลองเดียวสำหรับทดสอบทั้งห้าบทบาท
+const demoStaff = {
+  email: 'khalaphat793@gmail.com',
+  password: '12345678',
+  name: 'นายอั๋น ภูธาติแร่'
+};
+const staffRoleLabels = {
+  reception: 'ฝ่ายต้อนรับ',
+  accounting: 'ฝ่ายบัญชี',
+  housekeeping: 'แม่บ้าน'
+};
+const demoStaffRoles = {
+  superadmin: 'Super Admin',
+  ...staffRoleLabels,
+  executive: 'ฝ่ายบริหาร'
+};
+const staffAccounts = [];
 
 let currentStaffSession = null;
 let currentLoginMode = 'ลูกค้า';
@@ -174,12 +183,17 @@ $('#rec-chat-form')?.addEventListener('submit', event => {
   if (box) box.scrollTop = box.scrollHeight;
 });
 
-// ฟังก์ชันช่วยกรอกบัญชีทดสอบ
-window.fillStaffDemo = function(email, password) {
-  if ($('#login-email')) $('#login-email').value = email;
-  if ($('#login-password')) $('#login-password').value = password;
-  if ($('#login-error-msg')) $('#login-error-msg').hidden = true;
-};
+// bykoraphat: เลือกบทบาทแล้วกรอกอีเมลและรหัสทดลองให้
+const staffDemoRole = $('#staff-demo-role');
+for (const [role, label] of Object.entries(demoStaffRoles)) {
+  staffDemoRole.add(new Option(label, role));
+}
+staffDemoRole.addEventListener('change', () => {
+  if (!staffDemoRole.value) return;
+  $('#login-email').value = demoStaff.email;
+  $('#login-password').value = demoStaff.password;
+  $('#login-error-msg').hidden = true;
+});
 
 // เปิดระบบพนักงานและล็อกสิทธิ์เฉพาะฝ่ายนั้น
 function enterStaffSystem(staffUser) {
@@ -645,13 +659,21 @@ $('#login-form')?.addEventListener('submit', event => {
   const errText = $('#login-error-msg');
 
   if (currentLoginMode === 'พนักงาน') {
-    const matchedStaff = staffAccounts.find(acc => acc.email === email && acc.password === password);
+    // bykoraphat: บัญชีทดลองใช้บทบาทที่เลือก บัญชีอื่นใช้บทบาทประจำบัญชี
+    let matchedStaff = staffAccounts.find(acc => acc.email === email && acc.password === password);
+    let loginError = 'อีเมลหรือรหัสผ่านพนักงานไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง';
+    if (email === demoStaff.email && password === demoStaff.password) {
+      const role = staffDemoRole.value;
+      if (Object.hasOwn(demoStaffRoles, role)) {
+        matchedStaff = { ...demoStaff, role, roleLabel: demoStaffRoles[role] };
+      } else {
+        loginError = 'กรุณาเลือกบทบาทสำหรับบัญชีทดลอง';
+      }
+    }
 
     if (!matchedStaff) {
-      if (errText) {
-        errText.textContent = 'อีเมลหรือรหัสผ่านพนักงานไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง';
-        errText.hidden = false;
-      }
+      errText.textContent = loginError;
+      errText.hidden = false;
       return;
     }
 
@@ -897,11 +919,14 @@ $('#reject-slip-form').addEventListener('submit', event => {
 // bykoraphat: Super Admin เพิ่มบัญชีชั่วคราวและกำหนดสิทธิ์ตามฝ่าย
 const staffAccountForm = $('#staff-account-form');
 const staffAccessList = $('#staff-access-list');
-const staffRoleLabels = { reception: 'ฝ่ายต้อนรับ', accounting: 'ฝ่ายบัญชี', housekeeping: 'แม่บ้าน' };
 let editingStaffEmail = null;
 
 function renderStaffAccess() {
   staffAccessList.replaceChildren();
+  // bykoraphat: แสดงบัญชีทดลองเพียงแถวเดียวพร้อมบทบาทที่เลือกได้
+  const demoRow = staffAccessList.insertRow();
+  [demoStaff.name, 'บัญชีทดลอง', Object.values(demoStaffRoles).join(', '), 'เพิ่มบัญชีแยกเพื่อกำหนดสิทธิ์พนักงาน']
+    .forEach(value => { demoRow.insertCell().textContent = value; });
   for (const account of staffAccounts) {
     const row = staffAccessList.insertRow();
     [account.name, account.department || account.roleLabel, account.roleLabel]
@@ -959,8 +984,9 @@ staffAccountForm.addEventListener('submit', event => {
   };
   const existing = staffAccounts.find(item => item.email === email);
   const error = $('#staff-account-error');
-  if (!account.name || !account.department || !account.roleLabel || (existing && existing.email !== editingStaffEmail)) {
-    error.textContent = existing && existing.email !== editingStaffEmail
+  const duplicateEmail = email === demoStaff.email || (existing && existing.email !== editingStaffEmail);
+  if (!account.name || !account.department || !account.roleLabel || duplicateEmail) {
+    error.textContent = duplicateEmail
       ? 'อีเมลนี้มีบัญชีทดลองแล้ว' : 'กรุณาระบุชื่อ แผนก และสิทธิ์เข้าใช้งาน';
     error.hidden = false;
     return;

@@ -943,11 +943,13 @@
           <label><input type="radio" name="payment_choice" value="deposit" checked> <span id="deposit-label">มัดจำ 20%</span></label>
           <label><input type="radio" name="payment_choice" value="full"> จ่ายเต็ม</label>
         </fieldset>
-        <p class="demo-note">โหมดทดลอง ใช้ภาพตัวอย่างแทนสลิปจริง</p>
+        <p class="demo-note">โหมดทดลอง กรุณาอย่าโอนเงินจริง และใช้ภาพตัวอย่างแทนสลิปจริง</p>
         <div class="pay-details-row">
           <div class="bank-info">
             <p class="bank-name">ธนาคารกรุงไทย</p>
-            <p class="bank-acc">XXX-X-XXXXX-X</p>
+            <!-- bykoraphat: ข้อมูลบัญชีรับโอนที่แสดงให้ลูกค้า -->
+            <p class="bank-acc">6615646838</p>
+            <p>ชื่อบัญชี กรพัฒน์คำลือ</p>
           </div>
           <div class="total-info">
             <p class="hotel-tag">TKC NEVER WEKES HOTEL</p>
@@ -995,15 +997,14 @@
 
       <p id="login-error-msg" class="login-error-text" hidden></p>
 
+      <!-- bykoraphat: เลือกบทบาทสำหรับบัญชีพนักงานทดลอง -->
       <div id="staff-demo-accounts" class="staff-demo-box" hidden>
-        <small>คลิกเพื่อกรอกรหัสพนักงานทดสอบตามฝ่าย:</small>
-        <div class="demo-chips">
-          <button type="button" onclick="fillStaffDemo('admin@tkc.com', '12345678')">Super Admin</button>
-          <button type="button" onclick="fillStaffDemo('reception@tkc.com', '12345678')">ฝ่ายต้อนรับ</button>
-          <button type="button" onclick="fillStaffDemo('account@tkc.com', '12345678')">ฝ่ายบัญชี</button>
-          <button type="button" onclick="fillStaffDemo('exec@tkc.com', '12345678')">ฝ่ายบริหาร</button>
-          <button type="button" onclick="fillStaffDemo('housekeeping@tkc.com', '12345678')">แม่บ้าน</button>
-        </div>
+        <label class="login-input-group" for="staff-demo-role">
+          บทบาทสำหรับบัญชีทดลอง
+          <select id="staff-demo-role">
+            <option value="">เลือกบทบาทเพื่อกรอกบัญชีทดลอง</option>
+          </select>
+        </label>
       </div>
 
       <button type="submit" class="submit-login-btn">เข้าสู่ระบบ</button>
