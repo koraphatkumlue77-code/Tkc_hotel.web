@@ -308,32 +308,32 @@
                   <tr><th>ประเภทห้อง</th><th>รองรับ</th><th>ราคา</th><th>จำนวนห้อง</th><th></th></tr>
                 </thead>
                 <tbody>
-                  <tr>
+                  <tr data-room-type-summary="standard">
                     <td><strong>Standard Room</strong><small>18–25 ตร.ม.</small></td>
-                    <td>1–2 คน</td>
-                    <td><strong>฿1,000</strong></td>
-                    <td><strong>3 ห้อง</strong><small>ภายใต้ TKC Wekes Hotel</small></td>
+                    <td data-room-capacity>สูงสุด 2 คน</td>
+                    <td><strong data-room-price>฿1,000</strong></td>
+                    <td><strong data-room-inventory>300 ห้อง</strong><small>ภายใต้ TKC Wekes Hotel</small></td>
                     <td><button type="button" class="link-edit" onclick="toast('แก้ไขข้อมูล Standard Room')">แก้ไข</button></td>
                   </tr>
-                  <tr>
+                  <tr data-room-type-summary="superior">
                     <td><strong>Superior Room</strong><small>25–30 ตร.ม.</small></td>
-                    <td>1–2 คน</td>
-                    <td><strong>฿1,500</strong></td>
-                    <td><strong>2 ห้อง</strong><small>ภายใต้ TKC Wekes Hotel</small></td>
+                    <td data-room-capacity>สูงสุด 3 คน</td>
+                    <td><strong data-room-price>฿1,500</strong></td>
+                    <td><strong data-room-inventory>150 ห้อง</strong><small>ภายใต้ TKC Wekes Hotel</small></td>
                     <td><button type="button" class="link-edit" onclick="toast('แก้ไขข้อมูล Superior Room')">แก้ไข</button></td>
                   </tr>
-                  <tr>
+                  <tr data-room-type-summary="deluxe">
                     <td><strong>Deluxe Room</strong><small>30–40 ตร.ม.</small></td>
-                    <td>2 คน</td>
-                    <td><strong>฿2,000</strong></td>
-                    <td><strong>2 ห้อง</strong><small>ภายใต้ TKC Wekes Hotel</small></td>
+                    <td data-room-capacity>สูงสุด 2 คน</td>
+                    <td><strong data-room-price>฿2,000</strong></td>
+                    <td><strong data-room-inventory>250 ห้อง</strong><small>ภายใต้ TKC Wekes Hotel</small></td>
                     <td><button type="button" class="link-edit" onclick="toast('แก้ไขข้อมูล Deluxe Room')">แก้ไข</button></td>
                   </tr>
-                  <tr>
+                  <tr data-room-type-summary="family">
                     <td><strong>Family Room</strong><small>35–50 ตร.ม.</small></td>
-                    <td>3–4 คน</td>
-                    <td><strong>฿4,500</strong></td>
-                    <td><strong>2 ห้อง</strong><small>ภายใต้ TKC Wekes Hotel</small></td>
+                    <td data-room-capacity>พักได้ 3–6 คน</td>
+                    <td><strong data-room-price>฿4,500</strong></td>
+                    <td><strong data-room-inventory>100 ห้อง</strong><small>ภายใต้ TKC Wekes Hotel</small></td>
                     <td><button type="button" class="link-edit" onclick="toast('แก้ไขข้อมูล Family Room')">แก้ไข</button></td>
                   </tr>
                 </tbody>
@@ -378,7 +378,7 @@
           <div class="admin-card-header">
             <div>
               <h3>ทะเบียนห้องพักของโรงแรม</h3>
-              <p>ทุกห้องสังกัดโรงแรมนี้ มีหนึ่งประเภท และถือเป็นสถานะกำกับเสมอ</p>
+              <p>ตัวอย่างรหัสห้องและสถานะสำหรับทดลอง</p>
             </div>
             <button type="button" class="btn-dark-pill" onclick="toast('เพิ่มห้องพักใหม่เข้าระบบ')">+เพิ่มห้อง</button>
           </div>
@@ -389,25 +389,25 @@
               </thead>
               <tbody>
                 <tr>
-                  <td><strong>101</strong><small>TKC-CNX-01</small></td>
+                  <td><strong>Std001</strong><small>TKC-CNX-01</small></td>
                   <td>ชั้น 1</td>
                   <td>Standard Room</td>
                   <td><span class="status-badge green">ว่าง</span></td>
-                  <td><button type="button" class="link-edit" onclick="toast('แก้ไขสถานะห้อง 101')">แก้ไขห้อง</button></td>
+                  <td><button type="button" class="link-edit" onclick="toast('แก้ไขสถานะห้อง Std001')">แก้ไขห้อง</button></td>
                 </tr>
                 <tr>
-                  <td><strong>102</strong><small>TKC-CNX-01</small></td>
+                  <td><strong>Std002</strong><small>TKC-CNX-01</small></td>
                   <td>ชั้น 1</td>
                   <td>Standard Room</td>
                   <td><span class="status-badge yellow">จองแล้ว</span></td>
-                  <td><button type="button" class="link-edit" onclick="toast('แก้ไขสถานะห้อง 102')">แก้ไขห้อง</button></td>
+                  <td><button type="button" class="link-edit" onclick="toast('แก้ไขสถานะห้อง Std002')">แก้ไขห้อง</button></td>
                 </tr>
                 <tr>
-                  <td><strong>103</strong><small>TKC-CNX-01</small></td>
+                  <td><strong>Std003</strong><small>TKC-CNX-01</small></td>
                   <td>ชั้น 1</td>
                   <td>Standard Room</td>
                   <td><span class="status-badge green">ว่าง</span></td>
-                  <td><button type="button" class="link-edit" onclick="toast('แก้ไขสถานะห้อง 103')">แก้ไขห้อง</button></td>
+                  <td><button type="button" class="link-edit" onclick="toast('แก้ไขสถานะห้อง Std003')">แก้ไขห้อง</button></td>
                 </tr>
               </tbody>
             </table>
@@ -459,7 +459,7 @@
             <div class="admin-card-header">
               <div>
                 <h3>สถานะห้องพักวันนี้</h3>
-                <p>เช็คเอาท์แล้วจะย้ายไป "รอทำความสะอาด" ก่อนเปิดเป็นห้องว่าง</p>
+                <p>ข้อมูลห้องตัวอย่าง · เช็คเอาท์แล้วจะเข้าคิวทำความสะอาด</p>
               </div>
               <button type="button" class="btn-dark-pill" onclick="toast('แสดงรายการห้องพักทั้งหมด')">ดูรายการห้องทั้งหมด</button>
             </div>
@@ -478,12 +478,12 @@
                   <tr><th>ห้อง</th><th>ผู้เข้าพัก</th><th>ประเภท</th><th>สถานะ</th><th>จัดการ</th></tr>
                 </thead>
                 <tbody id="reception-room-list">
-                  <tr data-room-code="101">
-                    <td><strong>101</strong><small>ชั้น 1</small></td>
+                  <tr data-room-code="Std001">
+                    <td><strong>Std001</strong><small>ชั้น 1</small></td>
                     <td>—</td>
                     <td>Standard Room</td>
                     <td>
-                      <select class="status-select" onchange="toast('อัปเดตสถานะห้อง 101 เรียบร้อย')">
+                      <select class="status-select" onchange="toast('อัปเดตสถานะห้อง Std001 เรียบร้อย')">
                         <option selected>ว่าง</option>
                         <option>จองแล้ว</option>
                         <option>มีผู้เข้าพัก</option>
@@ -492,26 +492,26 @@
                     </td>
                     <td><span class="muted-action">พร้อมรับจอง</span></td>
                   </tr>
-                  <tr data-room-code="102">
-                    <td><strong>102</strong><small>ชั้น 1</small></td>
+                  <tr data-room-code="Std002">
+                    <td><strong>Std002</strong><small>ชั้น 1</small></td>
                     <td>วราภรณ์ ส.</td>
                     <td>Standard Room</td>
                     <td>
-                      <select class="status-select" onchange="toast('อัปเดตสถานะห้อง 102 เรียบร้อย')">
+                      <select class="status-select" onchange="toast('อัปเดตสถานะห้อง Std002 เรียบร้อย')">
                         <option>ว่าง</option>
                         <option selected>จองแล้ว</option>
                         <option>มีผู้เข้าพัก</option>
                         <option>รอทำความสะอาด</option>
                       </select>
                     </td>
-                    <td><button type="button" class="link-edit" onclick="toast('ดำเนินการเช็คอินห้อง 102 สำเร็จ')">เช็คอิน</button></td>
+                    <td><button type="button" class="link-edit" onclick="toast('ดำเนินการเช็คอินห้อง Std002 สำเร็จ')">เช็คอิน</button></td>
                   </tr>
-                  <tr data-room-code="103">
-                    <td><strong>103</strong><small>ชั้น 1</small></td>
+                  <tr data-room-code="Std003">
+                    <td><strong>Std003</strong><small>ชั้น 1</small></td>
                     <td>—</td>
                     <td>Standard Room</td>
                     <td>
-                      <select class="status-select" onchange="toast('อัปเดตสถานะห้อง 103 เรียบร้อย')">
+                      <select class="status-select" onchange="toast('อัปเดตสถานะห้อง Std003 เรียบร้อย')">
                         <option selected>ว่าง</option>
                         <option>จองแล้ว</option>
                         <option>มีผู้เข้าพัก</option>
@@ -519,42 +519,42 @@
                     </td>
                     <td><span class="muted-action">พร้อมรับจอง</span></td>
                   </tr>
-                  <tr data-room-code="201">
-                    <td><strong>201</strong><small>ชั้น 2</small></td>
+                  <tr data-room-code="Sup001">
+                    <td><strong>Sup001</strong><small>ชั้น 2</small></td>
                     <td>Alex Morgan</td>
                     <td>Superior Room</td>
                     <td>
-                      <select class="status-select" onchange="toast('อัปเดตสถานะห้อง 201 เรียบร้อย')">
+                      <select class="status-select" onchange="toast('อัปเดตสถานะห้อง Sup001 เรียบร้อย')">
                         <option>ว่าง</option>
                         <option selected>มีผู้เข้าพัก</option>
                         <option>รอทำความสะอาด</option>
                       </select>
                     </td>
-                    <td><button type="button" class="link-edit" data-checkout="201">เช็คเอาท์</button></td>
+                    <td><button type="button" class="link-edit" data-checkout="Sup001">เช็คเอาท์</button></td>
                   </tr>
-                  <tr data-room-code="202">
-                    <td><strong>202</strong><small>ชั้น 2</small></td>
+                  <tr data-room-code="Sup002">
+                    <td><strong>Sup002</strong><small>ชั้น 2</small></td>
                     <td>—</td>
                     <td>Superior Room</td>
                     <td><select class="status-select"><option selected>ว่าง</option></select></td>
                     <td><span class="muted-action">พร้อมรับจอง</span></td>
                   </tr>
-                  <tr data-room-code="301">
-                    <td><strong>301</strong><small>ชั้น 3</small></td>
+                  <tr data-room-code="Dlx001">
+                    <td><strong>Dlx001</strong><small>ชั้น 3</small></td>
                     <td>ชยพล ก.</td>
                     <td>Deluxe Room</td>
                     <td><select class="status-select"><option selected>มีผู้เข้าพัก</option></select></td>
-                    <td><button type="button" class="link-edit" data-checkout="301">เช็คเอาท์</button></td>
+                    <td><button type="button" class="link-edit" data-checkout="Dlx001">เช็คเอาท์</button></td>
                   </tr>
-                  <tr data-room-code="302">
-                    <td><strong>302</strong><small>ชั้น 3</small></td>
+                  <tr data-room-code="Dlx002">
+                    <td><strong>Dlx002</strong><small>ชั้น 3</small></td>
                     <td>—</td>
                     <td>Deluxe Room</td>
                     <td><select class="status-select"><option selected>ว่าง</option></select></td>
                     <td><span class="muted-action">พร้อมรับจอง</span></td>
                   </tr>
-                  <tr data-room-code="401">
-                    <td><strong>401</strong><small>ชั้น 4</small></td>
+                  <tr data-room-code="Fam001">
+                    <td><strong>Fam001</strong><small>ชั้น 4</small></td>
                     <td>—</td>
                     <td>Family Room</td>
                     <td><select class="status-select"><option selected>ปิดปรับปรุง</option></select></td>
@@ -580,17 +580,17 @@
                 <tbody>
                   <tr>
                     <td><strong>BKG-24018</strong><small>ลูกค้า 1 ราย</small></td>
-                    <td><strong>วราภรณ์ ส.</strong><small>ห้อง 102</small></td>
+                    <td><strong>วราภรณ์ ส.</strong><small>ห้อง Std002</small></td>
                     <td><strong>2026-06-18</strong><small>ถึง 2026-06-20</small></td>
                   </tr>
                   <tr>
                     <td><strong>BKG-24011</strong><small>ลูกค้า 1 ราย</small></td>
-                    <td><strong>Alex Morgan</strong><small>ห้อง 201</small></td>
+                    <td><strong>Alex Morgan</strong><small>ห้อง Sup001</small></td>
                     <td><strong>2026-06-17</strong><small>ถึง 2026-06-19</small></td>
                   </tr>
                   <tr>
                     <td><strong>BKG-24012</strong><small>ลูกค้า 1 ราย</small></td>
-                    <td><strong>ชยพล ก.</strong><small>ห้อง 201</small></td>
+                    <td><strong>ชยพล ก.</strong><small>ห้อง Dlx001</small></td>
                     <td><strong>2026-06-17</strong><small>ถึง 2026-06-20</small></td>
                   </tr>
                 </tbody>
@@ -897,7 +897,7 @@
         <img id="modal-room-img" src="" alt="Room preview" class="room-preview-img">
         <div class="room-preview-details">
           <h3 id="modal-room-name" class="serif-title">Standard Room</h3>
-          <p id="modal-room-subtext" class="subtext">ห้อง 101 18 - 25ตร.ม. 1-2 คน</p>
+          <p id="modal-room-subtext" class="subtext">ห้อง Std001 18 - 25ตร.ม. 1-2 คน</p>
           <p class="modal-price-line">
             <strong id="modal-room-price">1,000</strong> <span class="unit">บาท / คืน</span>
           </p>

@@ -48,7 +48,7 @@ function getBookingHistoryHTML(prefix) {
         <div class="history-item active" id="${prefix}-hist-1" onclick="selectSharedBooking('${prefix}', 1)">
           <div>
             <strong>BKG-23984</strong>
-            <p>ณัฐวดี พรหมมา · ห้อง 201</p>
+            <p>ณัฐวดี พรหมมา · ห้อง Sup001</p>
             <small>2026-05-12 → 2026-05-14</small>
           </div>
           <span class="status-badge green">เช็คเอาท์แล้ว</span>
@@ -83,7 +83,7 @@ function getBookingRecordDetail(recordId) {
         <span class="status-badge green">เช็คเอาท์แล้ว</span>
       </div>
       <div class="hd-info-cards">
-        <div class="hd-mini-card"><small>ห้องพัก</small><strong>Superior Room</strong><span>ห้อง 201 · 2 คน</span></div>
+        <div class="hd-mini-card"><small>ห้องพัก</small><strong>Superior Room</strong><span>ห้อง Sup001 · 2 คน</span></div>
         <div class="hd-mini-card"><small>Check-in</small><strong>2026-05-12</strong></div>
         <div class="hd-mini-card"><small>Check-out</small><strong>2026-05-14</strong></div>
       </div>
@@ -236,16 +236,34 @@ $('#btn-back-to-home')?.addEventListener('click', handleBackToHome);
 $('#btn-back-to-home-mobile')?.addEventListener('click', handleBackToHome);
 
 /* ==================== ระบบห้องพักและการค้นหา ==================== */
+// bykoraphat: ประเภทห้อง ความจุต่อห้อง และจำนวนห้องตาม Requirements
 const rooms = [
-  { id: 'standard', name: 'Standard Room', price: 1000, capacity: 2, size: '18–25', bed: 'เตียงควีนไซส์', roomNo: 'ห้อง 101', image: 'photo-1611892440504-42a792e24d32' },
-  { id: 'superior', name: 'Superior Room', price: 1500, capacity: 2, size: '25–30', bed: 'เตียงคิงไซส์', roomNo: 'ห้อง 201', image: 'photo-1566665797739-1674de7a421a' },
-  { id: 'deluxe', name: 'Deluxe Room', price: 2000, capacity: 2, size: '30–40', bed: 'เตียงคิงไซส์', roomNo: 'ห้อง 301', image: 'photo-1590490360182-c33d57733427' },
-  { id: 'family', name: 'Family Room', price: 4500, capacity: 4, size: '35–50', bed: 'เตียงคู่สำหรับครอบครัว', roomNo: 'ห้อง 401', image: 'photo-1566073771259-6a8506099945' }
+  { id: 'standard', name: 'Standard Room', price: 1000, capacity: 2, inventory: 300, size: '18–25', bed: 'เตียงควีนไซส์', roomNo: 'ห้อง Std001', image: 'photo-1611892440504-42a792e24d32' },
+  { id: 'superior', name: 'Superior Room', price: 1500, capacity: 3, inventory: 150, size: '25–30', bed: 'เตียงคิงไซส์', roomNo: 'ห้อง Sup001', image: 'photo-1566665797739-1674de7a421a' },
+  { id: 'deluxe', name: 'Deluxe Room', price: 2000, capacity: 2, inventory: 250, size: '30–40', bed: 'เตียงคิงไซส์', roomNo: 'ห้อง Dlx001', image: 'photo-1590490360182-c33d57733427' },
+  { id: 'family', name: 'Family Room', price: 4500, capacity: 6, minGuests: 3, inventory: 100, size: '35–50', bed: 'เตียงคู่สำหรับครอบครัว', roomNo: 'ห้อง Fam001', image: 'photo-1566073771259-6a8506099945' }
 ];
 
 // bykoraphat: อัตราอาหารเช้าต่อห้องต่อวันตามประเภทห้อง
 const breakfastRate = room => room.id === 'family' ? 500 : 350;
 const money = value => value.toLocaleString('th-TH');
+
+// bykoraphat: แสดงจำนวนห้องและความจุจากข้อมูลเดียวกับหน้าลูกค้า
+document.querySelectorAll('[data-room-type-summary]').forEach(row => {
+  const room = rooms.find(item => item.id === row.dataset.roomTypeSummary);
+  row.querySelector('[data-room-capacity]').textContent = room.minGuests ? `พักได้ ${guestRange(room)}` : `สูงสุด ${room.capacity} คน`;
+  row.querySelector('[data-room-price]').textContent = `฿${money(room.price)}`;
+  row.querySelector('[data-room-inventory]').textContent = `${money(room.inventory)} ห้อง`;
+});
+
+// bykoraphat: Family รองรับผู้เข้าพักตั้งแต่ 3 ถึง 6 คนต่อห้อง
+function guestRange(room) {
+  return `${room.minGuests ?? 1}–${room.capacity} คน`;
+}
+
+function clampRoomGuests(room, guests) {
+  return Math.max(room.minGuests ?? 1, Math.min(room.capacity, guests));
+}
 
 function renderRooms(list) {
   const roomGrid = $('#room-grid');
@@ -260,7 +278,7 @@ function renderRooms(list) {
           <p class="price"><strong>${money(room.price)}</strong> บาท <small>/ คืน</small></p>
           <p class="capacity">
             <svg aria-hidden="true"><use href="#person"/></svg>
-            เหมาะสำหรับจำนวนผู้เข้าพัก 1–${room.capacity} คน
+            เหมาะสำหรับจำนวนผู้เข้าพัก ${guestRange(room)}
           </p>
           <p class="details">ขนาดห้อง ${room.size} ตร.ม.<br>อาหารเช้า ${money(breakfastRate(room))} บาท / ห้อง / วัน</p>
           <div class="amenities">
@@ -330,7 +348,7 @@ $('#search-form').addEventListener('submit', event => {
   if (!validStay(searchIn.value, searchOut.value)) return;
   const type = $('#room-type').value;
   const guests = Number($('#guests').value);
-  const filtered = rooms.filter(room => (type === 'all' || room.id === type) && room.capacity >= guests);
+  const filtered = rooms.filter(room => (type === 'all' || room.id === type) && guests >= (room.minGuests ?? 1) && guests <= room.capacity);
   renderRooms(filtered);
   $('#results-status').textContent = 'ผลตามประเภทและความจุ โหมดทดลองยังไม่ตรวจห้องว่างจริง';
   $('#reset-search').hidden = false;
@@ -349,22 +367,26 @@ $('#empty-reset').addEventListener('click', resetRoomSearch);
 
 // bykoraphat: ห้องแต่ละแถวมีประเภทและจำนวนผู้พักของตัวเอง
 function renderBookingRooms() {
-  selectedRooms.innerHTML = bookingRooms.map(({ room, guests }, index) => `
+  selectedRooms.innerHTML = bookingRooms.map(({ room, guests }, index) => {
+    const minimum = room.minGuests ?? 1;
+    const guestOptions = Array.from({ length: room.capacity - minimum + 1 }, (_, index) => minimum + index);
+    return `
     <div class="selected-booking-room">
       <label>ประเภทห้อง <select data-room-type="${index}" aria-label="ประเภทห้อง ${index + 1}">
         ${rooms.map(option => `<option value="${option.id}" ${option === room ? 'selected' : ''}>${option.name}</option>`).join('')}
       </select></label>
       <label>ผู้พัก <select data-room-guests="${index}" aria-label="จำนวนผู้พักห้อง ${index + 1}">
-        ${Array.from({ length: room.capacity }, (_, i) => `<option value="${i + 1}" ${i + 1 === guests ? 'selected' : ''}>${i + 1} คน</option>`).join('')}
+        ${guestOptions.map(count => `<option value="${count}" ${count === guests ? 'selected' : ''}>${count} คน</option>`).join('')}
       </select></label>
       <button type="button" class="booking-outline" data-remove-room="${index}" aria-label="เอาห้อง ${index + 1} ออก" ${bookingRooms.length === 1 ? 'disabled' : ''}>เอาออก</button>
     </div>
-  `).join('');
+    `;
+  }).join('');
   const { room } = bookingRooms[0];
   $('#modal-room-name').textContent = room.name;
   $('#modal-room-img').src = `https://images.unsplash.com/${room.image}?auto=format&fit=crop&w=400&q=80`;
   $('#modal-room-img').alt = room.name;
-  $('#modal-room-subtext').textContent = `${room.size} ตร.ม. · 1–${room.capacity} คน`;
+  $('#modal-room-subtext').textContent = `${room.size} ตร.ม. · ${guestRange(room)}`;
   $('#modal-room-price').textContent = money(room.price);
   updateBookingTotal();
 }
@@ -374,7 +396,7 @@ selectedRooms.addEventListener('change', event => {
   if (roomType !== undefined) {
     const entry = bookingRooms[Number(roomType)];
     entry.room = rooms.find(room => room.id === event.target.value);
-    entry.guests = Math.min(entry.guests, entry.room.capacity);
+    entry.guests = clampRoomGuests(entry.room, entry.guests);
     renderBookingRooms();
     selectedRooms.querySelector(`[data-room-type="${roomType}"]`).focus();
   } else if (roomGuests !== undefined) {
@@ -445,7 +467,7 @@ function openBooking(room) {
   modalIn.value = datesFound ? searchIn.value : '';
   modalOut.value = datesFound ? searchOut.value : '';
   syncDates(modalIn, modalOut);
-  bookingRooms = [{ room, guests: Math.min(room.capacity, Number($('#guests').value)) }];
+  bookingRooms = [{ room, guests: clampRoomGuests(room, Number($('#guests').value)) }];
   renderBreakfastDates();
   renderBookingRooms();
   $('#booking-dialog').showModal();
@@ -482,6 +504,13 @@ slipInput.addEventListener('change', () => {
 bookingForm.addEventListener('submit', event => {
   event.preventDefault();
   if (!customerEmail || !validStay(modalIn.value, modalOut.value)) return;
+  if (bookingRooms.some(({ room, guests }) =>
+    !Number.isInteger(guests) || guests !== clampRoomGuests(room, guests)
+  )) {
+    bookingError.textContent = 'กรุณาเลือกจำนวนผู้พักให้ตรงกับช่วงที่ห้องรองรับ';
+    bookingError.hidden = false;
+    return;
+  }
   const amounts = bookingAmounts();
   if (breakfastToggle.checked && !amounts.breakfastDays) {
     bookingError.textContent = 'กรุณาเลือกวันอาหารเช้าอย่างน้อยหนึ่งวัน';
