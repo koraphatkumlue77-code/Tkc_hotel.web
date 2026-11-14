@@ -1679,3 +1679,123 @@ blockquote { margin: 0; border: 1px solid #ffffff25; border-radius: 18px; paddin
     width: auto;
   }
 }
+/* bykoraphat: ฟอร์มสมัคร รายการห้อง และสรุปยอดในโทนสีเดิม */
+#register-form select,
+.selected-booking-room select {
+  min-width: 0;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid #b8c3d5;
+  border-radius: 10px;
+  color: #082344;
+  background: white;
+}
+
+#register-password-error { text-align: left; }
+
+#booking-dialog { width: min(620px, 94vw); }
+#booking-form { display: grid; gap: 12px; }
+.booking-options h3 { margin: 0 0 6px; font-size: 16px; }
+
+.selected-booking-room {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  padding: 8px;
+  margin-bottom: 6px;
+  border-radius: 12px;
+  background: #e7ebf3;
+}
+
+.selected-booking-room label { min-width: 0; font-size: 13px; font-weight: 700; }
+.booking-outline {
+  min-height: 38px;
+  padding: 5px 10px;
+  border: 1px solid #56708e;
+  border-radius: 10px;
+  background: white;
+  color: #082344;
+  font-size: 14px;
+  font-weight: 700;
+}
+.booking-outline:disabled { opacity: .55; cursor: default; }
+
+.booking-choices { min-width: 0; padding: 7px 10px; border: 1px solid #cbd4e2; border-radius: 10px; }
+.booking-choices legend { padding: 0 4px; font-size: 13px; font-weight: 700; }
+.booking-choices label { display: inline-flex; align-items: center; gap: 5px; margin: 3px 10px 3px 0; }
+.booking-amounts { margin: 0; }
+.booking-amounts div { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; }
+.booking-amounts div:last-child { border-top: 1px solid #d4dbe6; font-weight: 800; }
+.booking-amounts dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.booking-slip-input { max-width: 100%; }
+#booking-form .demo-note, #my-bookings-dialog .demo-note { color: #445671; }
+#booking-form .slip-upload-box { overflow-wrap: anywhere; }
+#booking-form .bank-acc { overflow-wrap: anywhere; }
+
+#my-bookings-button { white-space: normal; }
+.customer-booking-card { margin: 10px 0; padding: 14px; background: #e7ebf3; border-radius: 14px; }
+.customer-booking-heading { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
+.customer-booking-card ul { padding-left: 20px; margin: 6px 0; }
+
+@media (max-width: 600px) {
+  .header-actions:has(#my-bookings-button:not([hidden])) { flex-wrap: wrap; justify-content: flex-end; }
+  #my-bookings-button { flex-basis: 100%; justify-content: center; }
+  #booking-dialog .date-field { min-width: 0; }
+  #booking-dialog .date-field input { min-width: 0; }
+  .selected-booking-room { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .selected-booking-room .booking-outline { grid-column: 2; justify-self: end; }
+}
+
+/* bykoraphat: ฟอร์มทดลองในระบบพนักงานและหน้าตรวจรายการ */
+.staff-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-block: 10px;
+}
+
+.staff-actions .booking-outline,
+.staff-actions .btn-dark-pill {
+  min-height: 42px;
+}
+
+.staff-room-picker {
+  align-items: end;
+  border-top: 1px solid #dce2ec;
+  padding-top: 12px;
+}
+
+.staff-form-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
+  gap: 12px;
+}
+
+.login-input-group :is(select, textarea) {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #aebace;
+  border-radius: 10px;
+  background: #fff;
+  color: #0c1a30;
+  font: inherit;
+}
+
+.login-input-group textarea { resize: vertical; }
+.staff-room-row { flex-wrap: wrap; gap: 8px; }
+.staff-room-row small { display: block; }
+.staff-room-row .staff-actions { margin: 0; }
+.staff-photo-field { border: 1px dashed #aebace; border-radius: 10px; padding: 0 10px 10px; }
+.staff-photo { max-width: 100%; max-height: 270px; object-fit: contain; border-radius: 8px; }
+.staff-damage-report { border-bottom: 1px solid #dce2ec; padding: 9px 0; overflow-wrap: anywhere; }
+.staff-damage-report summary { font-weight: 700; }
+.slip-resubmit { margin-top: 10px; }
+.slip-resubmit input { max-width: 100%; }
+.payment-reason { color: #8c2630; overflow-wrap: anywhere; }
+
+@media (max-width: 600px) {
+  .staff-room-picker .login-input-group { width: 100%; }
+}
