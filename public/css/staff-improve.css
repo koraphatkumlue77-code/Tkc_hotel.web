@@ -1,0 +1,211 @@
+/* Keep the original navy sidebar and compact white operation cards. */
+:root {
+  --navy: #082344;
+  --navy-deep: #061b36;
+  --coral: #f47d6b;
+  --line: #dce4eb;
+}
+body {
+  background: #f0f3f7;
+  font-family: "Noto Sans Thai", sans-serif;
+}
+.staff-layout {
+  grid-template-columns: 260px minmax(0, 1fr);
+}
+.staff-sidebar {
+  background: linear-gradient(180deg, #09223f, #173453);
+}
+.staff-sidebar .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: white;
+  font-family: Georgia, serif;
+  font-size: 1.35rem;
+  white-space: nowrap;
+}
+.staff-sidebar .brand-mark {
+  display: grid;
+  place-items: center;
+  width: 43px;
+  height: 43px;
+  flex: 0 0 43px;
+  border: 1px solid #b9d4e5;
+  border-radius: 50%;
+  font-family: Georgia, serif;
+  font-size: 0.72rem;
+}
+.staff-sidebar .brand small {
+  display: block;
+  font-family: "Noto Sans Thai", sans-serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  font-weight: 400;
+}
+.staff-sidebar .sidebar-caption {
+  color: #abc6db;
+}
+.staff-nav a {
+  border-radius: 12px;
+}
+.staff-topbar {
+  height: 58px;
+}
+.staff-content {
+  padding: clamp(1rem, 2vw, 1.8rem);
+}
+.staff-intro {
+  margin-bottom: 1.2rem;
+}
+.staff-intro h1 {
+  font-family: "Noto Sans Thai", sans-serif;
+  font-weight: 800;
+  font-size: clamp(1.65rem, 2.5vw, 2.35rem);
+}
+.staff-cards {
+  gap: 0.9rem;
+  margin-bottom: 1.3rem;
+}
+.metric {
+  border: 0;
+  border-radius: 18px;
+  padding: 1.1rem 1.3rem;
+  box-shadow: 0 9px 24px rgba(0, 20, 40, 0.05);
+}
+.metric .value {
+  font-family: "Noto Sans Thai", sans-serif;
+  font-weight: 800;
+  font-size: 1.8rem;
+}
+.metric .label {
+  font-size: 0.78rem;
+}
+.staff-section {
+  margin-bottom: 1.4rem;
+}
+.staff-section h2 {
+  font-family: "Noto Sans Thai", sans-serif;
+  font-weight: 800;
+  font-size: 1.35rem;
+}
+.staff-toolbar {
+  margin-bottom: 0.7rem;
+}
+.table-wrap,
+.panel {
+  border-radius: 18px;
+  border-color: var(--line);
+}
+th {
+  background: #f4f7f9;
+}
+.staff-form-disclosure {
+  margin: 0.65rem 0;
+}
+.staff-form-disclosure:not([open]) {
+  display: inline-block;
+  margin-right: 0.55rem;
+}
+.staff-form-disclosure summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  background: #082344;
+  color: #fff;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+.staff-form-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+.staff-form-disclosure[open] summary {
+  background: #1a4567;
+  border-radius: 12px 12px 0 0;
+}
+.staff-form-disclosure .panel {
+  margin: 0;
+  padding: 1rem;
+  box-shadow: none;
+  border-radius: 0 18px 18px 18px;
+}
+.staff-form-disclosure .inline-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+}
+.staff-form-disclosure .inline-form button {
+  justify-self: start;
+}
+.staff-section > form.field-row {
+  grid-template-columns: minmax(220px, 420px) auto;
+  max-width: 590px;
+  margin-top: 0.6rem;
+}
+@media (max-width: 800px) {
+  .staff-layout {
+    display: block;
+  }
+  .staff-sidebar {
+    padding: 0.8rem 1rem;
+    position: relative;
+  }
+  .staff-sidebar .brand {
+    margin: 0 0 0.7rem;
+  }
+  .staff-nav {
+    gap: 0.4rem;
+  }
+  .staff-nav a {
+    background: rgba(255, 255, 255, 0.07);
+  }
+  .staff-sidebar .bottom {
+    display: block;
+    position: absolute;
+    right: 1rem;
+    bottom: 0.8rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .staff-sidebar .bottom p {
+    display: none;
+  }
+  .staff-sidebar .bottom button {
+    width: auto;
+    min-height: 36px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.78rem;
+  }
+  .staff-content {
+    padding: 1rem;
+  }
+}
+@media (max-width: 560px) {
+  .staff-topbar {
+    padding: 0 1rem;
+  }
+  .staff-topbar .breadcrumb {
+    display: none;
+  }
+  .staff-intro {
+    gap: 0.7rem;
+  }
+  .staff-intro .btn {
+    min-height: 40px;
+  }
+  .staff-form-disclosure .inline-form {
+    grid-template-columns: 1fr;
+  }
+  .staff-section > form.field-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .metric {
+    padding: 0.8rem;
+  }
+  .metric .value {
+    font-size: 1.35rem;
+  }
+}

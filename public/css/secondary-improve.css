@@ -1,0 +1,148 @@
+/* Secondary account and staff entry pages follow the original TKC visual language. */
+:root {
+  --navy: #082344;
+  --navy-deep: #061b36;
+  --coral: #f47d6b;
+  --paper: #fcfaf7;
+  --line: #d5e0e9;
+}
+body {
+  background: #e9f0f4;
+  font-family: "Noto Sans Thai", sans-serif;
+}
+.topline {
+  display: none;
+}
+.site-header {
+  background: linear-gradient(115deg, #082344, #153b50);
+  border-bottom: 0;
+  color: white;
+  box-shadow: 0 8px 28px rgba(0, 20, 40, 0.2);
+}
+.site-header .inner {
+  height: 82px;
+}
+.site-header .brand {
+  color: white;
+  font-family: Georgia, serif;
+}
+.brand-mark {
+  border-color: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+}
+.site-nav a {
+  color: white;
+}
+.site-nav a:hover {
+  color: #ffab99;
+}
+.site-nav .nav-cta {
+  background: var(--coral);
+  color: var(--navy);
+  border-radius: 999px;
+}
+.menu-toggle {
+  border-radius: 12px;
+}
+.page-hero {
+  position: relative;
+  background: var(--navy) url("/assets/hotel-original-hero.jpg") center 48% /
+    cover;
+  padding: clamp(3rem, 6vw, 5rem) 0 clamp(5rem, 8vw, 7rem);
+}
+.page-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(3, 22, 45, 0.88),
+    rgba(3, 22, 45, 0.38)
+  );
+}
+.page-hero .container {
+  position: relative;
+}
+.page-hero .eyebrow {
+  color: #ffb19e;
+}
+.page-hero h1 {
+  font-family: Georgia, "Noto Serif Thai", serif;
+  font-size: clamp(2.2rem, 4.5vw, 4.2rem);
+  margin: 0.7rem 0 1rem;
+}
+.page-hero p {
+  font-size: 1rem;
+}
+.panel,
+.room-card,
+.search-panel,
+.booking-item {
+  border-radius: 22px;
+}
+.panel,
+.room-card,
+.search-panel {
+  background: var(--paper);
+  box-shadow: 0 14px 34px rgba(0, 20, 40, 0.1);
+}
+.btn {
+  border-radius: 999px;
+}
+.btn-primary {
+  background: var(--coral);
+}
+.account-grid {
+  grid-template-columns: minmax(260px, 350px) minmax(0, 1fr);
+}
+.account-layout {
+  padding-top: 1.5rem;
+}
+.booking-layout {
+  padding-top: 1.5rem;
+}
+.results .room-card {
+  grid-template-columns: minmax(220px, 35%) minmax(0, 1fr);
+}
+.results .room-card img {
+  aspect-ratio: 4 / 3;
+}
+.site-footer {
+  padding: 2rem 0;
+}
+@media (max-width: 980px) {
+  .account-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 720px) {
+  .site-header .inner {
+    height: 70px;
+  }
+  .site-nav {
+    background: var(--navy);
+  }
+  .site-nav a {
+    color: white;
+  }
+  .page-hero {
+    padding: 2.6rem 0 3.5rem;
+  }
+  .page-hero h1 {
+    font-size: clamp(2rem, 8vw, 3rem);
+  }
+  .account-layout,
+  .booking-layout,
+  .results {
+    padding-bottom: 3rem;
+  }
+  .results .room-card {
+    grid-template-columns: 1fr;
+  }
+  .results .room-card img {
+    height: 210px;
+  }
+  .booking-steps {
+    flex-wrap: wrap;
+  }
+}

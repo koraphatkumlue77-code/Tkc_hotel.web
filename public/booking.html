@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>จองห้องพัก | TKC Hotel</title>
+    <link rel="stylesheet" href="/css/public.css" />
+    <link rel="stylesheet" href="/css/secondary-improve.css" />
+  </head>
+  <body>
+    <div class="topline">TKC HOTEL · ระบบจองห้องจำลอง</div>
+    <header class="site-header">
+      <div class="container inner">
+        <a class="brand" href="/"
+          ><span class="brand-mark">TKC</span
+          ><span>TKC<small>NEVER WEKES HOTEL</small></span></a
+        ><button
+          class="menu-toggle"
+          type="button"
+          aria-label="เปิดเมนู"
+          aria-expanded="false"
+          aria-controls="site-nav"
+        >
+          ☰ เมนู
+        </button>
+        <nav id="site-nav" class="site-nav">
+          <a href="/">หน้าแรก</a><a href="/rooms.html">ห้องพัก</a
+          ><a href="/account.html">บัญชีของฉัน</a>
+        </nav>
+      </div>
+    </header>
+    <main>
+      <section class="page-hero">
+        <div class="container">
+          <span class="eyebrow">YOUR STAY</span>
+          <h1>จัดการพักผ่อน<br />ในแบบของคุณ</h1>
+          <p>
+            เลือกห้องและบริการ เห็นยอดทั้งหมดก่อนส่งรายการจอง
+            ข้อมูลทุกอย่างเป็นการจำลองสำหรับโครงงาน
+          </p>
+        </div>
+      </section>
+      <div class="container booking-layout">
+        <div>
+          <div class="booking-steps">
+            <span class="step-dot active"><b>1</b> รายละเอียด</span
+            ><span class="step-dot"><b>2</b> ตรวจราคา</span
+            ><span class="step-dot"><b>3</b> ชำระจำลอง</span>
+          </div>
+          <div id="bookingStatus" aria-live="polite"></div>
+          <form id="bookingForm" class="stack">
+            <section class="panel">
+              <span class="eyebrow">01 / STAY DATES</span>
+              <h2 style="font-size: 1.7rem">ช่วงวันเข้าพัก</h2>
+              <div class="field-row">
+                <div>
+                  <label for="checkIn">วันเข้าพัก</label
+                  ><input type="date" id="checkIn" required />
+                </div>
+                <div>
+                  <label for="checkOut">วันออก</label
+                  ><input type="date" id="checkOut" required />
+                </div>
+              </div>
+            </section>
+            <section class="panel">
+              <span class="eyebrow">02 / ROOMS</span>
+              <h2 style="font-size: 1.7rem">ห้องพัก</h2>
+              <p class="subtle small">
+                เพิ่มจำนวนห้องแต่ละประเภท และระบุผู้เข้าพักในแต่ละห้อง
+              </p>
+              <div id="roomChoices" class="stack">
+                <p class="loading">กำลังโหลดประเภทห้อง…</p>
+              </div>
+            </section>
+            <section class="panel">
+              <span class="eyebrow">03 / EXPERIENCES</span>
+              <h2 style="font-size: 1.7rem">บริการเพิ่มเติม</h2>
+              <p class="subtle small">ทุกห้องในรายการเดียวกันใช้ชุดบริการเหมือนกัน</p>
+              <div class="field-row">
+                <label class="choice"
+                  ><input type="checkbox" id="fitness" /><span
+                    ><strong>ฟิตเนส</strong><br /><small
+                      >฿500 ต่อห้อง ตลอดการพัก</small
+                    ></span
+                  ></label
+                ><label class="choice"
+                  ><input type="checkbox" id="sauna" /><span
+                    ><strong>ซาวน่า</strong><br /><small
+                      >฿300 ต่อห้อง ตลอดการพัก</small
+                    ></span
+                  ></label
+                >
+              </div>
+              <div class="divider"></div>
+              <strong>อาหารเช้า</strong>
+              <p class="subtle small">เลือกวันที่ต้องการ ทุกห้องรับอาหารเช้าวันเดียวกัน</p>
+              <div id="breakfastDates" class="grid two-col"></div>
+            </section>
+            <section class="panel">
+              <span class="eyebrow">04 / CONFIRM</span>
+              <h2 style="font-size: 1.7rem">ตรวจสอบและกันห้อง</h2>
+              <p class="subtle">
+                ระบบกันจำนวนห้อง 15 นาทีหลังส่งรายการ
+                จากนั้นส่งการชำระแบบจำลองเพื่อรอฝ่ายบัญชีตรวจ
+              </p>
+              <button id="holdButton" class="btn btn-primary" type="submit">
+                กันห้องและดำเนินการต่อ →
+              </button>
+              <p class="demo-note">
+                ต้องเข้าสู่ระบบสมาชิกก่อนจองออนไลน์ ไม่มีการตัดเงินจริง
+              </p>
+            </section>
+          </form>
+          <section id="paymentPanel" class="panel" hidden>
+            <span class="eyebrow">05 / SIMULATED PAYMENT</span>
+            <h2 style="font-size: 1.7rem">ส่งการชำระแบบจำลอง</h2>
+            <p>
+              รายการจอง <strong id="bookingCode"></strong> ·
+              <span id="holdUntil"></span>
+            </p>
+            <div class="status info">
+              ขั้นตอนนี้ใช้ข้อมูลทดลองเท่านั้น ไม่มีการโอนหรือหักเงินจริง
+            </div>
+            <form id="paymentForm" class="stack" style="margin-top: 1rem">
+              <div>
+                <label for="paymentMethod">ช่องทางจำลอง</label
+                ><select id="paymentMethod">
+                  <option value="online_demo">ออนไลน์จำลอง</option>
+                  <option value="transfer_demo">
+                    โอนเงินจำลอง พร้อมหลักฐานตัวอย่าง
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label for="paymentAmount">ยอดที่ส่ง (บาท)</label
+                ><input id="paymentAmount" type="number" min="1" required />
+              </div>
+              <div id="evidenceField" hidden>
+                <label for="evidence">หลักฐานตัวอย่าง JPG, PNG หรือ WebP</label
+                ><input
+                  id="evidence"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                />
+              </div>
+              <button class="btn btn-primary" type="submit">
+                ส่งให้ฝ่ายบัญชีตรวจ →
+              </button>
+            </form>
+          </section>
+        </div>
+        <aside class="panel sticky-summary">
+          <span class="eyebrow">YOUR RESERVATION</span>
+          <h2 style="font-size: 1.7rem">สรุปรายการจอง</h2>
+          <div id="quoteSummary">
+            <p class="subtle">เลือกห้องและวันที่เพื่อดูราคา</p>
+          </div>
+          <div class="divider"></div>
+          <p class="demo-note">
+            ราคาเป็นจำนวนบาทตามข้อมูลห้องในฐานข้อมูล ระบบชำระเงินและคืนเงินเป็นการจำลอง
+          </p>
+        </aside>
+      </div>
+    </main>
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-bottom" style="margin-top: 0">
+          <span>© TKC Hotel · Educational project</span
+          ><span>ไม่มีการรับหรือคืนเงินจริง</span>
+        </div>
+      </div>
+    </footer>
+    <script type="module" src="/js/booking.js"></script>
+  </body>
+</html>

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>บัญชีของฉัน | TKC Hotel</title>
+    <link rel="stylesheet" href="/css/public.css" />
+    <link rel="stylesheet" href="/css/secondary-improve.css" />
+  </head>
+  <body>
+    <div class="topline">TKC HOTEL · YOUR ACCOUNT</div>
+    <header class="site-header">
+      <div class="container inner">
+        <a class="brand" href="/"
+          ><span class="brand-mark">TKC</span
+          ><span>TKC<small>NEVER WEKES HOTEL</small></span></a
+        ><button
+          class="menu-toggle"
+          type="button"
+          aria-label="เปิดเมนู"
+          aria-expanded="false"
+          aria-controls="site-nav"
+        >
+          ☰ เมนู
+        </button>
+        <nav id="site-nav" class="site-nav">
+          <a href="/">หน้าแรก</a><a href="/rooms.html">ห้องพัก</a
+          ><a href="/booking.html">เริ่มจอง</a>
+        </nav>
+      </div>
+    </header>
+    <main>
+      <section class="page-hero">
+        <div class="container">
+          <span class="eyebrow">YOUR TKC</span>
+          <h1>ทุกช่วงเวลาของคุณ<br />อยู่ที่นี่</h1>
+          <p>ดูสถานะการจอง การชำระแบบจำลอง และติดต่อฝ่ายต้อนรับได้ในที่เดียว</p>
+        </div>
+      </section>
+      <div class="container account-layout">
+        <div id="accountStatus" aria-live="polite"></div>
+        <section id="authSection" class="account-grid">
+          <form id="loginForm" class="panel stack">
+            <span class="eyebrow">WELCOME BACK</span>
+            <h2 style="font-size: 1.8rem">เข้าสู่ระบบ</h2>
+            <div>
+              <label for="loginEmail">อีเมล</label
+              ><input
+                id="loginEmail"
+                type="email"
+                autocomplete="email"
+                required
+              />
+            </div>
+            <div>
+              <label for="loginPassword">รหัสผ่าน</label
+              ><input
+                id="loginPassword"
+                type="password"
+                autocomplete="current-password"
+                required
+              />
+            </div>
+            <button class="btn btn-primary" type="submit">เข้าสู่ระบบ →</button>
+          </form>
+          <form id="registerForm" class="panel stack">
+            <span class="eyebrow">JOIN TKC</span>
+            <h2 style="font-size: 1.8rem">สมัครสมาชิก</h2>
+            <div class="field-row">
+              <div>
+                <label for="fullName">ชื่อผู้จอง</label
+                ><input id="fullName" required />
+              </div>
+              <div>
+                <label for="phone">เบอร์โทร</label
+                ><input id="phone" type="tel" required />
+              </div>
+            </div>
+            <div>
+              <label for="identityReference">เลขบัตรหรือพาสปอร์ตสมมติ</label
+              ><input
+                id="identityReference"
+                required
+                placeholder="เช่น DEMO-12345"
+              /><small class="subtle">โปรดใช้ข้อมูลตัวอย่างสำหรับโครงงาน</small>
+            </div>
+            <div>
+              <label for="registerEmail">อีเมล</label
+              ><input
+                id="registerEmail"
+                type="email"
+                autocomplete="email"
+                required
+              />
+            </div>
+            <div>
+              <label for="registerPassword">รหัสผ่าน (อย่างน้อย 10 ตัว)</label
+              ><input
+                id="registerPassword"
+                type="password"
+                minlength="10"
+                autocomplete="new-password"
+                required
+              />
+            </div>
+            <button class="btn btn-dark" type="submit">สร้างบัญชี →</button>
+          </form>
+        </section>
+        <section id="memberSection" hidden>
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">MY STAYS</span>
+              <h2 id="welcomeName">การเข้าพักของฉัน</h2>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap">
+              <a class="btn btn-primary" href="/booking.html">จองห้องเพิ่ม</a
+              ><button id="logoutButton" class="btn btn-outline" type="button">
+                ออกจากระบบ
+              </button>
+            </div>
+          </div>
+          <div class="account-grid">
+            <div>
+              <h3>รายการจอง</h3>
+              <div id="bookingList" class="booking-list"></div>
+            </div>
+            <div id="bookingDetail" class="panel">
+              <p class="subtle">เลือกรายการจองเพื่อดูรายละเอียด</p>
+            </div>
+          </div>
+          <div class="panel" style="margin-top: 1.5rem">
+            <span class="eyebrow">FRONT DESK</span>
+            <h2 style="font-size: 1.7rem">แชตกับฝ่ายต้อนรับ</h2>
+            <div id="chatLog" class="chat-log" aria-live="polite"></div>
+            <form
+              id="chatForm"
+              class="field-row"
+              style="
+                grid-template-columns: 1fr auto;
+                align-items: end;
+                margin-top: 1rem;
+              "
+            >
+              <div>
+                <label for="chatMessage">ข้อความ</label
+                ><input id="chatMessage" maxlength="2000" required />
+              </div>
+              <button class="btn btn-dark" type="submit">ส่งข้อความ</button>
+            </form>
+          </div>
+        </section>
+      </div>
+    </main>
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-bottom" style="margin-top: 0">
+          <span>© TKC Hotel · Educational project</span
+          ><span>การชำระเงินทั้งหมดเป็นการจำลอง</span>
+        </div>
+      </div>
+    </footer>
+    <script type="module" src="/js/account.js"></script>
+  </body>
+</html>

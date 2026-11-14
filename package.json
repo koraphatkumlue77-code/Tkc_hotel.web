@@ -1,0 +1,27 @@
+{
+  "name": "tkc-hotel",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=.env --watch server/index.js",
+    "start": "node --env-file=.env server/index.js",
+    "db:migrate": "node --env-file=.env db/migrate.js",
+    "db:seed": "node --env-file=.env db/seed.js",
+    "format": "prettier --write \"public/**/*.{html,css,js}\" \"server/**/*.js\" \"db/**/*.js\" \"test/**/*.js\"",
+    "test": "node --env-file=.env.test --test --test-concurrency=1 test/*.test.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "express-mysql-session": "^3.0.3",
+    "express-session": "^1.18.2",
+    "multer": "^2.0.2",
+    "mysql2": "^3.24.6"
+  },
+  "overrides": {
+    "mysql2": "^3.24.6"
+  },
+  "devDependencies": {
+    "prettier": "^3.10.1"
+  }
+}

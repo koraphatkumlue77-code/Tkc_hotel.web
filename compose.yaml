@@ -1,0 +1,19 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: local_only_root
+      MYSQL_DATABASE: tkc_hotel
+      MYSQL_USER: tkc
+      MYSQL_PASSWORD: local_only_tkc
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -plocal_only_root"]
+      interval: 5s
+      retries: 20
+volumes:
+  mysql_data:

@@ -1,1 +1,7 @@
 .superpowers/
+node_modules/
+.env
+uploads/
+playwright-report/
+test-results/
+artifacts/
