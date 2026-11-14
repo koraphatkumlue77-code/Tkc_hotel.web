@@ -24,7 +24,7 @@ TKC Hotel is fictional. The website and MySQL-backed workflows should work for m
 - The customer and staff interfaces must show shared, persisted state rather than isolated browser-only samples.
 
 ## Brand Commitments
-Use blue as the primary color and white as the secondary color. The selected Blue Harbor layout uses the coral orange accent from the Clear Booking mockup instead of gold.
+Use blue as the primary color and white as the secondary color. The selected Blue Harbor layout uses the coral orange accent from the Clear Booking mockup instead of gold. The customer frontend should feel advanced, carefully art-directed, and premium while staying in plain HTML, CSS, and JavaScript.
 
 ## Evidence on Hand
 - Existing frontend prototype: `index.html`, `style.css`, `script.js`.
