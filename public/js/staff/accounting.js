@@ -4,6 +4,7 @@ import {
   section,
   panel,
   metricGrid,
+  roleOverview,
   table,
   form,
   note,
@@ -27,7 +28,7 @@ export async function render() {
   ]);
   const pending = section(
     "รายการรอตรวจ",
-    "ระบบตรวจรูปแบบและยอดแล้ว ฝ่ายบัญชีต้องรับรองก่อนยืนยันการจอง",
+    "เปิดหลักฐาน ตรวจยอดและเลขการจอง แล้วรับรองหรือปฏิเสธพร้อมเหตุผล",
   );
   table(
     pending,
@@ -37,12 +38,14 @@ export async function render() {
       ["customerName", "ผู้จอง"],
       [(r) => baht(r.amount), "ยอด"],
       ["method", "ช่องทาง"],
+      ["channelDetail", "ประเภท / ธนาคาร"],
       [(r) => `${r.waitingMinutes} นาที`, "รอมา"],
     ],
     payments,
     [
       {
         label: "หลักฐาน",
+        readOnly: true,
         when: (r) => Boolean(r.evidencePath),
         run: async (r) =>
           window.open(
@@ -53,6 +56,8 @@ export async function render() {
       },
       {
         label: "รับรอง",
+        intent: "primary",
+        help: "รับรองยอดเพื่อให้รายการจองดำเนินต่อได้",
         run: (r) =>
           api(`/api/payments/${r.id}/review`, {
             method: "POST",
@@ -63,9 +68,11 @@ export async function render() {
       },
       {
         label: "ปฏิเสธ",
+        intent: "danger",
+        help: "ระบุเหตุผลเพื่อให้ผู้จองแก้ไขหลักฐาน",
         run: async (r) => {
           const reason = prompt("เหตุผลที่ปฏิเสธ");
-          if (!reason) return;
+          if (!reason) return false;
           await api(`/api/payments/${r.id}/review`, {
             method: "POST",
             body: { decision: "rejected", reason },
@@ -75,7 +82,10 @@ export async function render() {
       },
     ],
   );
-  const history = section("การจองและยอดคงเหลือ");
+  const history = section(
+    "การจองและยอดเรียกเก็บ",
+    "เทียบยอดรวมและมัดจำของแต่ละการจองก่อนติดตามการชำระ",
+  );
   table(
     history,
     [
@@ -87,7 +97,12 @@ export async function render() {
     ],
     bookings,
   );
-  const refundsSection = section("คำขอคืนเงินจำลอง");
+  const refundsSection = section(
+    "คำขอคืนเงินจำลอง",
+    "ส่งคำขอให้ฝ่ายบริหารอนุมัติ แล้วจึงบันทึกการคืนเงิน",
+  );
+  history.classList.add("staff-section-half");
+  refundsSection.classList.add("staff-section-half");
   table(
     refundsSection,
     [
@@ -102,6 +117,8 @@ export async function render() {
     [
       {
         label: "บันทึกคืน",
+        intent: "primary",
+        help: "ใช้ได้เฉพาะคำขอที่ฝ่ายบริหารอนุมัติแล้ว",
         when: (r) => r.status === "approved",
         run: (r) => api(`/api/refunds/${r.id}/record`, { method: "POST" }),
         refresh: render,
@@ -111,7 +128,7 @@ export async function render() {
   );
   form(
     refundsSection,
-    "ส่งคำขอคืนเงินให้ฝ่ายบริหาร",
+    "สร้างคำขอคืนเงิน",
     [
       { name: "bookingId", label: "เลขการจอง", type: "number", min: 1 },
       {
@@ -128,9 +145,13 @@ export async function render() {
       await render();
     },
     "ส่งคำขอ",
+    { help: "ระบุเลขการจองและสาเหตุ ระบบคำนวณยอดคืนตามเงื่อนไขก่อนส่งอนุมัติ" },
   );
   note(refundsSection, "ฝ่ายบัญชีบันทึกคืนได้หลังฝ่ายบริหารอนุมัติเท่านั้น ไม่มีเงินเคลื่อนจริง");
-  const auditSection = section("ประวัติการเงิน");
+  const auditSection = section(
+    "ประวัติการเงิน",
+    "แสดง 30 รายการล่าสุด พร้อมข้อมูลก่อนและหลังการเปลี่ยนแปลง",
+  );
   table(
     auditSection,
     [
@@ -142,5 +163,29 @@ export async function render() {
       [(r) => JSON.stringify(r.afterValue ?? null), "หลัง"],
     ],
     audit.slice(0, 30),
+  );
+  roleOverview(
+    "ตรวจชำระและติดตามการคืนเงิน",
+    "ฝ่ายบัญชีรับรองหลักฐานและบันทึกคืนเงิน ส่วนการอนุมัติคืนเงินเป็นหน้าที่ฝ่ายบริหาร",
+    [
+      {
+        label: "รอตรวจหลักฐาน",
+        value: payments.length,
+        target: pending,
+        detail: "ตรวจยอดและหลักฐานก่อนรับรอง",
+      },
+      {
+        label: "อนุมัติแล้ว รอบันทึกคืน",
+        value: refunds.filter((item) => item.status === "approved").length,
+        target: refundsSection,
+        detail: "บันทึกคืนได้หลังฝ่ายบริหารอนุมัติ",
+      },
+      {
+        label: "คำขอคืนที่รอตัดสินใจ",
+        value: refunds.filter((item) => item.status === "requested").length,
+        target: refundsSection,
+        detail: "ติดตามสถานะคำขอที่ส่งให้ฝ่ายบริหาร",
+      },
+    ],
   );
 }

@@ -1,0 +1,1434 @@
+html {
+  scrollbar-width: none;
+}
+html::-webkit-scrollbar {
+  display: none;
+}
+.account-page {
+  --navy: #102c48;
+  --navy-deep: #081c31;
+  --coral: #eb8317;
+  --coral-dark: #99500a;
+  --muted: #496174;
+  --paper: #edf3f7;
+  --line: #cbd8e2;
+  --sans: "Noto Sans Thai", sans-serif;
+  --serif: "Noto Serif Thai", serif;
+  background: whitesmoke;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+.account-page [hidden] {
+  display: none !important;
+}
+.account-page :focus-visible {
+  outline: 3px solid #b35d08;
+  outline-offset: 4px;
+}
+.account-page .skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 100;
+  padding: 12px 20px;
+  background: white;
+  color: var(--navy);
+  transform: translateY(-160%);
+}
+.account-page .skip-link:focus {
+  transform: none;
+}
+.account-page .site-header {
+  background: white;
+}
+.account-page .site-header .inner {
+  height: 72px;
+}
+.account-page .brand {
+  gap: 12px;
+  font-family: var(--sans);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.account-page .brand small {
+  margin-top: 5px;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+}
+.account-page .brand img {
+  padding: 0;
+  background: transparent;
+  border-radius: 8px;
+  object-fit: contain;
+}
+.account-page .icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.account-page .site-nav a {
+  padding-block: 14px;
+  color: var(--navy);
+}
+.account-page .site-nav a[aria-current] {
+  border-bottom: 2px solid var(--coral);
+}
+.account-page .menu-toggle {
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--navy);
+}
+.account-hero {
+  color: white;
+  padding: 20px 0 36px;
+  background: var(--navy);
+  position: relative;
+  overflow: hidden;
+}
+.account-hero h1 {
+  font-size: 1.75rem;
+  line-height: 1.45;
+  margin-bottom: 6px;
+  position: relative;
+  z-index: 1;
+}
+.account-hero > .container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+.hero-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 0;
+  color: white;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.account-hero p {
+  max-width: 600px;
+  color: #d6e2eb;
+  margin: 0;
+  position: relative;
+  z-index: 1;
+}
+.account-layout {
+  padding: 0 0 48px;
+  position: relative;
+  margin-top: -16px;
+}
+#accountStatus:empty {
+  display: none;
+}
+#accountStatus:not(:empty) {
+  margin: 0 0 16px;
+}
+#accountStatus:has(.success) {
+  position: fixed;
+  top: 88px;
+  right: 24px;
+  width: min(440px, calc(100vw - 32px));
+  z-index: 60;
+  margin: 0;
+  pointer-events: none;
+  box-shadow: 0 8px 24px #00000026;
+  border-radius: 10px;
+}
+#accountStatus .success {
+  border: 0;
+}
+.account-welcome {
+  align-items: center;
+  padding: 16px 20px;
+  background: var(--navy);
+  border: 2px solid var(--surface);
+  color: white;
+  border-radius: 14px;
+  margin-bottom: 12px;
+}
+.account-welcome h2 {
+  font-family: var(--sans);
+  font-size: 1.25rem;
+  line-height: 1.5;
+  margin: 0 0 4px;
+}
+.account-welcome p {
+  margin: 0;
+  color: #d4e4f0;
+}
+.account-welcome .btn-outline {
+  color: white;
+  border-color: #92b0c7;
+  background: #ffffff08;
+}
+.account-welcome .btn-outline:hover {
+  background: #ffffff18;
+  border-color: white;
+}
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.account-page .btn {
+  border-radius: 8px;
+  font-size: 0.875rem;
+  min-height: 44px;
+  padding: 9px 14px;
+  background: #ff9a2d;
+  color: var(--navy-deep)
+}
+
+.account-page #logoutButton {
+  background: var(--navy);
+  color: red;
+}
+
+.account-page .btn-primary {
+  background: var(--coral);
+  color: var(--navy-deep);
+}
+.account-page .btn-primary:hover {
+  background: #f39a39;
+}
+.account-summary {
+  display: grid;
+  justify-items: center;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  margin-bottom: 18px;
+  background: #ffffff;
+  border-color: #204e70;
+  color: rgb(86, 22, 205);
+}
+.account-summary > div {
+  padding: 12px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background-color: white;
+  border-radius: 10px;
+}
+.account-summary > div + div {
+  border-left: 2px solid #50738e;
+}
+.account-summary strong {
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  padding-right: 40px;
+}
+.account-summary span {
+  color: #204e70;
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-left: 20px;
+}
+
+#allBookings { color: #204e70; }
+#activeBookings { color: #16a34a; }
+#reviewBookings { color: #d97706; }
+#allBookingsLabel { color: #204d70ba; }
+#activeBookingsLabel { color: #16a34aba; }
+#reviewBookingsLabel { color: #d97706ba; }
+
+.account-grid {
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.account-grid > * {
+  min-width: 0;
+}
+.booking-sidebar {
+  padding: 16px;
+  border: 1px solid #bdcedb;
+  border-radius: 12px;
+  background: #c5d9e8;
+}
+.booking-filter-help,
+.booking-status-help {
+  font-size: 0.8rem;
+  line-height: 1.7;
+  color: #425e73;
+  margin: 0 0 14px;
+}
+.booking-status-help {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-top: 12px;
+}
+.status-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  display: inline-block;
+  border-radius: 50%;
+}
+.status-dot.waiting {
+  background: #986016;
+}
+.booking-list-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.booking-list-heading h2 {
+  font-family: var(--sans);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+.refresh-button {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--navy);
+  border-radius: 8px;
+}
+.refresh-button:hover {
+  background: var(--mist);
+}
+.booking-list {
+  gap: 10px;
+  max-height: 62vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #93adbf #d7e4ee;
+  padding-right: 4px;
+}
+.booking-item {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  transition:
+    border-color 0.18s,
+    background 0.18s;
+}
+.booking-item:hover {
+  border-color: #8a9eae;
+}
+.booking-item.active {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: white;
+}
+.booking-item.active .small {
+  color: #d1e1ed;
+}
+.booking-item.active .booking-total {
+  color: white;
+}
+.booking-item .small {
+  color: var(--muted);
+}
+.booking-total {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-top: 3px;
+}
+.account-page .panel {
+  background: var(--navy);
+  border: 1px solid var(--line);
+  box-shadow: none;
+  border-radius: 14px;
+  padding: 20px;
+}
+.booking-detail > h2 {
+  font-family: var(--sans);
+  font-size: 1.125rem;
+  line-height: 1.5;
+  margin-bottom: 14px;
+  color: white;
+}
+.booking-reference {
+  color: var(--paper);
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+}
+.booking-guidance {
+  font-size: 0.95rem;
+  color: var(--muted);
+  margin-top: 16px;
+  margin-bottom: 20px;
+}
+.booking-detail h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 20px 0 10px;
+  color: white;
+}
+.account-page .badge {
+  font-size: 0.78rem;
+  line-height: 1.6;
+  white-space: normal;
+}
+.state-held,
+.state-pending_review,
+.state-replacement_pending {
+  background: #fff0d9;
+  color: #80500a;
+}
+.state-approved,
+.state-confirmed,
+.state-checked_in,
+.state-checked_out {
+  background: #d9f4e2;
+  color: #146b39;
+}
+.state-rejected,
+.state-cancelled,
+.state-expired,
+.state-no_show {
+  background: #fee2e2;
+  color: #b42327;
+}
+.booking-lifecycle {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0;
+  margin: 18px 0;
+  list-style: none;
+}
+.booking-lifecycle li {
+  border-top: 3px solid var(--coral);
+  padding-top: 8px;
+  font-size: 0.78rem;
+  color: white;
+}
+.booking-lifecycle .complete {
+  border-color: lightgreen;
+  color: whitesmoke;
+}
+.booking-lifecycle [aria-current] {
+  border-color: var(--paper);
+  font-weight: 700;
+}
+.booking-detail .mini-list > div {
+  padding: 0px 10px;
+  border-radius: 8px;
+  color: whitesmoke;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.booking-detail .mini-list {
+  gap: 8px;
+}
+.booking-detail .booking-rooms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 10px;
+}
+.booking-detail .price-line {
+  padding: 12px;
+  border-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 5px;
+  font-size: 0.8rem;
+}
+.booking-detail .price-line:last-child {
+  font-size: 0.8rem;
+  border-bottom: 0;
+}
+.booking-detail .price-line strong {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.1rem;
+}
+.booking-amounts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: #edf3f7;
+  border-radius: 8px;
+  margin: 16px 0px;
+}
+.booking-amounts .price-line + .price-line {
+  border-left: 1px solid #d0dce5;
+}
+.booking-amounts .price-line:last-child {
+  background: #dceaf5;
+  border-radius: 0 8px 8px 0;
+}
+.booking-amounts .amount-success strong {
+  color: green;
+}
+.booking-amounts .amount-due strong {
+  color: orange;
+}
+.account-page
+  :is(
+    .booking-amounts,
+    .booking-total,
+    .account-summary,
+    .transaction-row,
+    .trip-seat-count
+  ) {
+  font-variant-numeric: tabular-nums;
+}
+.booking-detail .stack {
+  gap: 14px;
+}
+.booking-detail > .stack {
+  gap: 8px;
+  margin-top: 14px;
+}
+.transaction-row {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.92rem;
+  color: lightgray;
+}
+.transaction-row:last-child {
+  border: 0;
+}
+.transaction-row p {
+  margin: 4px 0 0;
+}
+.transaction-row .badge {
+  flex-shrink: 0;
+}
+.payment-reason {
+  color: #8a352b;
+}
+.booking-detail form {
+  padding-top: 4px;
+}
+.booking-detail form .btn {
+  justify-self: start;
+}
+.account-page input,
+.account-page select,
+.account-page textarea {
+  border-radius: 8px;
+  border-color: #bdcbd5;
+  min-height: 44px;
+  font-size: 0.875rem;
+  background: #f8fbff;
+  caret-color: var(--navy);
+}
+.account-page select {
+  appearance: none;
+  cursor: pointer;
+  color-scheme: light;
+  padding: 10px 42px 10px 14px;
+  border-color: #92afc5;
+  background-color: #edf5fc;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23102c48' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E"),
+    linear-gradient(to left, #dbeaf5 40px, transparent 40px);
+  background-position:
+    right 9px center,
+    right center;
+  background-size:
+    22px 22px,
+    100% 100%;
+  background-repeat: no-repeat;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+.account-page select:hover {
+  background-color: #e0eef9;
+}
+.account-page select:focus-visible {
+  border-color: #124f78;
+  background-color: #fff;
+}
+.account-page option {
+  color: var(--navy);
+  background: white;
+}
+.account-page :is(input[type="date"], input[type="datetime-local"]) {
+  color-scheme: light;
+  background-color: #edf5fc;
+  border-color: #92afc5;
+  min-width: 0;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.account-page
+  :is(
+    input[type="date"],
+    input[type="datetime-local"]
+  )::-webkit-calendar-picker-indicator {
+  width: 20px;
+  height: 20px;
+  margin-left: 8px;
+  padding: 6px;
+  cursor: pointer;
+  border-radius: 6px;
+  background-color: #dbeaf5;
+}
+.account-page :is(input[type="radio"], input[type="checkbox"]) {
+  accent-color: var(--navy);
+  inline-size: 18px;
+  block-size: 18px;
+  min-height: 18px;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.account-page :is(input, select, textarea):disabled {
+  background: #e4ebf1;
+  color: #657c8e;
+  cursor: not-allowed;
+  opacity: 1;
+}
+.account-page input:hover,
+.account-page select:hover,
+.account-page textarea:hover {
+  border-color: #7891a4;
+}
+.account-page input:focus,
+.account-page select:focus,
+.account-page textarea:focus {
+  border-color: var(--navy);
+}
+.account-page input[type="file"] {
+  padding: 10px;
+}
+.account-page input::file-selector-button {
+  border: 0;
+  background: var(--mist);
+  color: var(--navy);
+  border-radius: 5px;
+  padding: 8px 12px;
+  margin-right: 12px;
+  cursor: pointer;
+}
+.account-page .trip-panel {
+  background: rgb(0, 0, 36);
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 16px;
+  border-color: whitesmoke;
+  border-width: 2px;
+}
+.trip-overview {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.trip-overview > img {
+  width: 112px;
+  height: 84px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.trip-overview h3 {
+  margin: 0 0 5px;
+}
+.trip-overview p {
+  margin: 0 0 6px;
+}
+.trip-seat-count {
+  color: #1e557a;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.trip-book-button {
+  margin-top: 2px;
+}
+.trip-panel > h3:first-child {
+  margin-top: 0;
+}
+.trip-panel .mini-list > div {
+  background: white;
+  line-height: 1.9;
+}
+.account-chat {
+  position: fixed;
+  right: 24px;
+  bottom: 96px;
+  width: min(380px, calc(100vw - 32px));
+  max-height: calc(100dvh - 120px);
+  z-index: 40;
+  background: white;
+  border: 0;
+  border-radius: 16px;
+  box-shadow: 0 16px 64px #0000002e;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.account-chat-launcher {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 0;
+  background: var(--coral);
+  color: var(--navy-deep);
+  z-index: 41;
+  box-shadow: 0 6px 24px #00000033;
+}
+.account-chat-launcher:hover {
+  background: #f4a24c;
+}
+.account-chat-launcher .icon {
+  width: 25px;
+  height: 25px;
+}
+.account-chat .chat-close {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 0;
+  background: #ffffff18;
+  color: white;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+}
+.account-chat .chat-close:hover {
+  background: #ffffff30;
+}
+.chat-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px;
+  background: var(--navy);
+  color: white;
+}
+.chat-heading h2 {
+  font-family: var(--sans);
+  font-size: 1.1rem;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+.chat-heading p {
+  font-size: 0.8rem;
+  color: #d1e0eb;
+  margin: 0;
+}
+#chatStatus:empty {
+  display: none;
+}
+#chatStatus {
+  padding: 12px 16px 0;
+  font-size: 0.85rem;
+}
+.chat-heading .badge {
+  flex-shrink: 0;
+}
+.account-page .chat-log {
+  height: min(310px, 42dvh);
+  min-height: 130px;
+  flex: 1;
+  background: var(--paper);
+  border: 0;
+  border-radius: 0;
+  padding: 16px;
+}
+.account-page .chat-receipt {
+  margin: 3px 4px 8px;
+  color: #4b6578;
+  font-size: 0.75rem;
+  text-align: right;
+}
+.account-page .chat-bubble {
+  border-radius: 12px 12px 12px 2px;
+  padding: 12px 16px;
+  max-width: 85%;
+}
+.account-page .chat-bubble strong {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.account-page .chat-bubble.mine {
+  border-color: var(--navy);
+  border-radius: 12px 12px 2px 12px;
+  background: var(--navy);
+  color: white;
+}
+.account-page .chat-bubble.mine strong {
+  color: #c4d5e3;
+}
+.chat-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 0;
+  padding: 16px;
+  border-top: 1px solid var(--line);
+}
+.chat-form label {
+  font-size: 0.78rem;
+}
+.chat-send {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: var(--navy);
+  color: white;
+}
+.chat-send:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.account-page .site-footer {
+  padding: 28px 0;
+}
+.tour-booking-dialog {
+  width: min(560px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px);
+  padding: 20px;
+  border: 0;
+  border-radius: 14px;
+  color: var(--navy);
+  background: var(--paper);
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #b88a54 var(--paper);
+}
+.tour-booking-dialog::backdrop {
+  background: rgb(0 15 34 / 70%);
+}
+.tour-booking-dialog > img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  margin: 16px 0 24px;
+  border-radius: 8px;
+}
+.tour-booking-dialog > h2 {
+  font-size: 1.25rem;
+}
+.tour-booking-dialog .tour-close {
+  display: flex;
+  margin-left: auto;
+}
+.account-page .footer-bottom {
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+}
+.payment-feedback {
+  width: min(460px, calc(100% - 32px));
+  border: 1px solid var(--line);
+  padding: 24px;
+  border-radius: 18px;
+  text-align: center;
+  color: var(--navy);
+  box-shadow: 0 18px 56px #00000029;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #90a5b5 #edf2f6;
+}
+.payment-feedback::backdrop {
+  background: #081c31b3;
+  backdrop-filter: blur(4px);
+}
+.payment-feedback h2 {
+  font-family: var(--sans);
+  font-size: 1.25rem;
+  line-height: 1.5;
+  margin: 20px 0 12px;
+}
+.payment-feedback p {
+  color: var(--muted);
+}
+.payment-feedback .feedback-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-inline: auto;
+  background: #e6f4ec;
+  color: #246144;
+  border-radius: 50%;
+}
+.account-loading h2 {
+  font-family: var(--sans);
+  font-size: 1.25rem;
+  line-height: 1.5;
+}
+.account-page .chat-log {
+  scrollbar-width: thin;
+  scrollbar-color: #90a5b5 #edf2f6;
+}
+.account-page :is(h1, h2, h3) {
+  font-family: var(--serif);
+}
+.booking-search {
+  margin-bottom: 14px;
+}
+.booking-search label {
+  font-size: 0.85rem;
+}
+.booking-search > div {
+  position: relative;
+}
+.booking-search .icon {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  color: var(--muted);
+}
+.booking-search input {
+  padding-left: 42px;
+}
+.booking-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.booking-filters button {
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.booking-filters button[aria-pressed="true"] {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: white;
+}
+.booking-filters button:hover {
+  border-color: var(--navy);
+}
+#bookingResultCount {
+  margin-bottom: 14px;
+}
+.booking-detail-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.booking-detail-heading h2 {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  margin: 0;
+  color: white;
+}
+.booking-detail-heading > .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+}
+.booking-detail-heading .icon {
+  width: 16px;
+  height: 16px;
+}
+.booking-guidance {
+  border-left: 0;
+  padding: 0;
+  line-height: 1.8;
+  font-size: 0.875rem;
+  color: #304f68;
+  margin: 0 0 12px;
+}
+.booking-action-area {
+  background: whitesmoke;
+  padding: 16px;
+  border-radius: 10px;
+  margin-top: 16px;
+}
+.booking-next-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 0;
+}
+.booking-next-actions .btn {
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  min-height: 44px;
+}
+.account-page .next-primary {
+  background: var(--coral);
+  color: var(--navy-deep);
+  border-color: var(--coral);
+  font-weight: 700;
+}
+.account-page .next-primary:hover {
+  background: #f39a39;
+  border-color: #f39a39;
+}
+.booking-next-actions .btn-outline {
+  background: white;
+  border-color: #afc3d3;
+  font-weight: 500;
+}
+.booking-next-actions .btn-outline:hover {
+  background: #dbe7f0;
+  border-color: var(--navy);
+}
+.booking-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 12px;
+  margin-top: 16px;
+}
+.booking-actions > * {
+  min-width: 0;
+}
+.booking-actions > :is(details, form, .status) {
+  flex: 1 0 100%;
+}
+.booking-actions .btn {
+  justify-self: start;
+  max-width: 100%;
+  text-align: center;
+  color: white;
+}
+.booking-actions > form {
+  border: 1px solid var(--line);
+  padding: 20px;
+  border-radius: 10px;
+  background: var(--paper);
+}
+.booking-actions h3 {
+  margin-top: 0;
+}
+.payment-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 0 16px 16px;
+}
+.payment-form .payment-channel-guide {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid #bed2e3;
+  border-radius: 10px;
+  padding: 13px 15px;
+  background: #f4f9fd;
+  color: #123b5d;
+}
+.payment-channel-guide-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 28px;
+  height: 28px;
+  color: white;
+  background: #155481;
+  border-radius: 50%;
+  font-weight: 700;
+}
+.payment-channel-guide p {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  color: #355c77;
+}
+.payment-disclosure {
+  background: #e5f0fa;
+  border: 1px solid #9db9d1;
+  border-radius: 10px;
+}
+.payment-disclosure > summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  padding: 12px 16px !important;
+  min-height: 48px !important;
+  color: var(--navy);
+}
+.payment-disclosure > summary .disclosure-chevron {
+  margin-left: auto;
+}
+.payment-disclosure[open] > summary .disclosure-chevron {
+  transform: rotate(180deg);
+}
+.payment-disclosure > summary .small {
+  font-weight: 400;
+  color: #446782;
+}
+.payment-disclosure .payment-form label {
+  font-size: 0.85rem;
+}
+.payment-disclosure .payment-form .btn {
+  justify-self: start;
+}
+.payment-form > h3,
+.payment-form > p,
+.payment-form > .btn,
+.payment-form > div:has(input[type="file"]) {
+  grid-column: 1 / -1;
+}
+.account-page .btn-danger {
+  border: 2px solid lightgray;
+  background: red;
+  color: white;
+}
+.account-page .btn-danger:hover {
+  background: whitesmoke;
+  border-color: red;
+  color: red;
+}
+.cancel-booking {
+  order: 10;
+  margin-top: 0;
+  margin-inline-start: auto;
+}
+.booking-actions .status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.booking-actions .status > .btn {
+  margin: 0;
+}
+.booking-detail :is(.payment-history, .service-history, .optional-action) {
+  border-radius: 10px;
+  padding: 0 14px;
+  margin-top: 10px;
+}
+.booking-detail summary {
+  min-height: 46px;
+  cursor: pointer;
+  padding: 11px 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: whitesmoke;
+}
+.booking-detail summary::marker {
+  color: whitesmoke;
+}
+.optional-action form {
+  padding-bottom: 18px;
+}
+.booking-actions > .optional-action:not([open]) {
+  flex: 0 1 auto;
+  margin-top: 0;
+}
+.trip-panel .mini-list > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  color: var(--navy);
+  font-size: 0.925rem;
+  font-weight: 100;
+  padding: 0 0 0 20px;
+  margin-bottom: 10px;
+}
+.trip-panel .mini-list .btn {
+  flex-shrink: 0;
+  margin: 0 !important;
+  padding: 0 10px;
+}
+@media (max-width: 980px) {
+  .account-welcome {
+    gap: 12px;
+  }
+  .account-summary > div {
+    align-items: start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .account-grid {
+    grid-template-columns: minmax(240px, 270px) minmax(0, 1fr);
+    gap: 18px;
+  }
+  .booking-lifecycle {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+@media (max-width: 720px) {
+  #accountStatus:has(.success) {
+    top: 80px;
+    right: 16px;
+  }
+  .account-page .site-header .inner {
+    height: 68px;
+    gap: 12px;
+  }
+  .account-page .brand {
+    font-size: 0.95rem;
+    gap: 8px;
+  }
+  .account-page .brand img {
+    width: 40px;
+    height: 40px;
+  }
+  .account-page .menu-toggle {
+    display: inline-flex;
+  }
+  .account-page .site-nav {
+    background: white;
+    border-bottom: 1px solid var(--line);
+  }
+  .account-hero {
+    padding: 20px 0 32px;
+  }
+  .account-welcome {
+    padding: 16px;
+  }
+  .account-actions {
+    width: 100%;
+  }
+  .account-actions > * {
+    flex: 0 1 auto;
+    padding-inline: 12px;
+  }
+  .account-summary {
+    margin-bottom: 16px;
+  }
+  .account-summary > div {
+    padding: 12px;
+  }
+  .account-summary strong {
+    font-size: 1.375rem;
+  }
+  .account-summary span {
+    font-size: 0.76rem;
+  }
+  .account-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .booking-item {
+    gap: 6px;
+  }
+  .booking-lifecycle {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .chat-heading {
+    flex-direction: row;
+    gap: 12px;
+    margin-bottom: 0;
+  }
+  .chat-form {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .chat-form .btn {
+    justify-self: end;
+  }
+  .account-page .chat-log {
+    padding: 12px;
+  }
+  .account-page .chat-bubble {
+    max-width: 92%;
+  }
+  .transaction-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .account-page .footer-bottom {
+    flex-direction: column;
+  }
+  .account-hero > .container {
+    align-items: start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .hero-home {
+    font-size: 0.85rem;
+    min-height: 36px;
+  }
+  .account-summary {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  .booking-next-actions {
+    gap: 10px;
+  }
+  .booking-next-actions .btn {
+    flex: 0 1 auto;
+  }
+  .payment-form {
+    grid-template-columns: 1fr;
+  }
+  .account-page input,
+  .account-page select,
+  .account-page textarea {
+    font-size: 1rem;
+  }
+  .account-page .booking-detail {
+    padding: 16px;
+  }
+  .trip-overview {
+    grid-template-columns: 80px minmax(0, 1fr);
+    gap: 12px;
+  }
+  .trip-overview > img {
+    width: 80px;
+    height: 80px;
+  }
+  .booking-list {
+    max-height: 300px;
+  }
+  .booking-action-area {
+    padding: 12px;
+  }
+  .booking-amounts {
+    grid-template-columns: 1fr;
+  }
+  .booking-amounts .price-line {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+  }
+  .booking-amounts .price-line + .price-line {
+    border-left: 0;
+    border-top: 1px solid #d0dce5;
+  }
+  .booking-amounts .price-line:last-child {
+    border-radius: 0 0 8px 8px;
+  }
+  .account-chat {
+    right: 16px;
+    bottom: 88px;
+    max-height: calc(100dvh - 108px);
+  }
+  .account-chat-launcher {
+    right: 16px;
+    bottom: 16px;
+  }
+  .account-page .site-footer {
+    padding-bottom: 88px;
+  }
+}
+@media (max-width: 480px) {
+  .account-welcome {
+    align-items: start;
+    flex-wrap: wrap;
+  }
+  .account-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .payment-confirm {
+    padding: 20px;
+  }
+  .payment-confirm-actions {
+    gap: 8px;
+  }
+  .payment-confirm-actions button {
+    padding-inline: 12px;
+  }
+}
+@media (forced-colors: active) {
+  .account-page select {
+    appearance: auto;
+    background-image: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .account-page *,
+  .account-page *::before,
+  .account-page *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+.payment-confirm {
+  width: min(440px, calc(100% - 32px));
+  padding: 28px;
+  border-radius: 18px;
+  text-align: left;
+}
+.payment-confirm h2 {
+  margin: 0 0 18px;
+  font-size: 1.35rem;
+}
+.payment-confirm-details {
+  margin: 0;
+  padding: 16px;
+  border-radius: 12px;
+  background: #edf4f8;
+  color: #12334d;
+}
+.payment-confirm-details div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0;
+}
+.payment-confirm-details dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+}
+.payment-confirm p {
+  margin: 16px 0;
+}
+.payment-confirm-actions {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.payment-confirm-actions button {
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.payment-confirm {
+  border: 1px solid var(--line);
+  color: var(--navy);
+  box-shadow: 0 18px 56px #00000029;
+}
+.payment-confirm::backdrop {
+  background: #081c31b3;
+  backdrop-filter: blur(4px);
+}

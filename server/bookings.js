@@ -167,14 +167,16 @@ export async function createBookingHold(
     ],
   );
   const bookingId = booking.insertId;
-  for (const room of priced)
-    await connection.execute(
+  for (const room of priced) {
+    const [inserted] = await connection.execute(
       "INSERT INTO booking_rooms (booking_id,type_id,guests,nightly_price) VALUES (?,?,?,?)",
       [bookingId, room.typeId, room.guests, room.nightlyPrice],
     );
+    room.bookingRoomId = inserted.insertId;
+  }
   for (const date of quote.breakfastDates)
-    for (const room of priced)
-      await connection.execute(
+    for (const room of priced) {
+      const [service] = await connection.execute(
         "INSERT INTO booking_services (booking_id,kind,service_date,quantity,unit_price,total) VALUES (?,?,?,?,?,?)",
         [
           bookingId,
@@ -185,13 +187,22 @@ export async function createBookingHold(
           room.breakfastPrice,
         ],
       );
+      await connection.execute(
+        "INSERT INTO booking_service_rooms (service_id,booking_room_id) VALUES (?,?)",
+        [service.insertId, room.bookingRoomId],
+      );
+    }
   for (const kind of ["fitness", "sauna"])
     if (quote[kind])
       for (const room of priced) {
         const price = kind === "fitness" ? 500 : 300;
-        await connection.execute(
+        const [service] = await connection.execute(
           "INSERT INTO booking_services (booking_id,kind,quantity,unit_price,total) VALUES (?,?,?,?,?)",
           [bookingId, kind, 1, price, price],
+        );
+        await connection.execute(
+          "INSERT INTO booking_service_rooms (service_id,booking_room_id) VALUES (?,?)",
+          [service.insertId, room.bookingRoomId],
         );
       }
   await setBookingStatus(
@@ -222,11 +233,11 @@ export async function bookingDetail(connection, id) {
     [id],
   );
   const [services] = await connection.execute(
-    "SELECT * FROM booking_services WHERE booking_id=? ORDER BY id",
+    "SELECT s.*, l.booking_room_id FROM booking_services s LEFT JOIN booking_service_rooms l ON l.service_id=s.id WHERE s.booking_id=? ORDER BY s.id",
     [id],
   );
   const [payments] = await connection.execute(
-    "SELECT id,amount,method,status,submitted_at AS submittedAt,reviewed_at AS reviewedAt,rejection_reason AS rejectionReason FROM payments WHERE booking_id=? ORDER BY id",
+    "SELECT id,amount,method,channel_detail AS channelDetail,status,submitted_at AS submittedAt,reviewed_at AS reviewedAt,rejection_reason AS rejectionReason FROM payments WHERE booking_id=? ORDER BY id",
     [id],
   );
   const [tours] = await connection.execute(
@@ -271,9 +282,13 @@ export function bookingRoutes(app) {
       if (!account?.customer_id) fail(403, "บัญชีนี้จองออนไลน์ไม่ได้");
       const result = await withTransaction((connection) =>
         createBookingHold(connection, {
-          ...req.body,
+          rooms: req.body.rooms,
+          checkIn: req.body.checkIn,
+          checkOut: req.body.checkOut,
+          services: req.body.services,
           customerId: account.customer_id,
           accountId: req.session.accountId,
+          source: "online",
         }),
       );
       res.status(201).json(result);
@@ -284,7 +299,7 @@ export function bookingRoutes(app) {
     requireRole("member"),
     asyncRoute(async (req, res) => {
       const [rows] = await pool.execute(
-        "SELECT id,check_in AS checkIn,check_out AS checkOut,status,total,deposit_due AS depositDue,created_at AS createdAt FROM bookings WHERE account_id=? ORDER BY id DESC",
+        "SELECT id,check_in AS checkIn,check_out AS checkOut,status,total,deposit_due AS depositDue,hold_until AS holdUntil,created_at AS createdAt FROM bookings WHERE account_id=? ORDER BY id DESC",
         [req.session.accountId],
       );
       res.json(rows);

@@ -1,0 +1,26 @@
+.hero-media-next {
+  opacity: 0;
+  transition: opacity 1.8s ease;
+}
+.hero-media-next.is-active {
+  opacity: 1;
+}
+#hero-phrase {
+  color: #ffae4c;
+  display: inline-block;
+  transition:
+    opacity 400ms ease,
+    transform 400ms ease;
+}
+#hero-phrase.is-changing {
+  opacity: 0;
+  transform: translateY(6px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-media-next {
+    display: none;
+  }
+  #hero-phrase {
+    transition: none;
+  }
+}

@@ -27,8 +27,8 @@ export async function createReview(
   )
     fail(403, "รีวิวได้หลัง Check-in เฉพาะสมาชิกผู้จอง");
   const [result] = await connection.execute(
-    "INSERT INTO reviews (booking_id,account_id,rating,content) VALUES (?,?,?,?)",
-    [bookingId, accountId, rating, content.trim()],
+    "INSERT INTO reviews (booking_id,rating,content) VALUES (?,?,?)",
+    [bookingId, rating, content.trim()],
   );
   await recordAudit(connection, {
     actorId: accountId,

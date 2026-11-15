@@ -4,6 +4,7 @@ import {
   clear,
   section,
   metricGrid,
+  roleOverview,
   table,
   form,
   note,
@@ -53,10 +54,18 @@ export async function render() {
     promotions,
     [
       {
-        label: "แก้ไข",
+        label: "แก้ส่วนลด",
         run: async (r) => {
-          const percentOff = Number(prompt("ส่วนลดใหม่ (%)", r.percentOff));
-          if (!Number.isFinite(percentOff)) return;
+          const value = prompt("ส่วนลดใหม่ (%)", r.percentOff);
+          if (value === null) return false;
+          const percentOff = Number(value);
+          if (
+            !value.trim() ||
+            !Number.isFinite(percentOff) ||
+            percentOff <= 0 ||
+            percentOff > 100
+          )
+            throw new Error("กรุณาระบุส่วนลดมากกว่า 0 และไม่เกิน 100 เปอร์เซ็นต์");
           await api(`/api/promotions/${r.id}`, {
             method: "PATCH",
             body: { percentOff },
@@ -97,8 +106,14 @@ export async function render() {
       await api("/api/promotions", { method: "POST", body: values });
       await render();
     },
+    "สร้างโปรโมชั่น",
+    { help: "กำหนดวันที่และเงื่อนไขขั้นต่ำ ลำดับตัวเลขใช้จัดลำดับโปรโมชั่นตามกติกาของระบบ" },
   );
-  const refundSection = section("อนุมัติคืนเงินจำลอง");
+  const refundSection = section(
+    "อนุมัติคืนเงินจำลอง",
+    "ตรวจยอดและเหตุผลก่อนตัดสินใจ ฝ่ายบัญชีจะบันทึกคืนหลังอนุมัติ",
+  );
+  refundSection.classList.add("staff-section-half");
   table(
     refundSection,
     [
@@ -113,6 +128,8 @@ export async function render() {
     [
       {
         label: "อนุมัติ",
+        intent: "primary",
+        help: "ส่งต่อให้ฝ่ายบัญชีบันทึกคืนเงิน",
         when: (r) => r.status === "requested",
         run: (r) =>
           api(`/api/refunds/${r.id}/decision`, {
@@ -123,6 +140,7 @@ export async function render() {
       },
       {
         label: "ปฏิเสธ",
+        intent: "danger",
         when: (r) => r.status === "requested",
         run: (r) =>
           api(`/api/refunds/${r.id}/decision`, {
@@ -133,7 +151,11 @@ export async function render() {
       },
     ],
   );
-  const staffSection = section("สิทธิ์พนักงาน");
+  const staffSection = section(
+    "สิทธิ์พนักงาน",
+    "เปลี่ยนบทบาทให้ตรงหน้าที่ หรือเปิดและปิดการใช้งานบัญชี",
+  );
+  staffSection.classList.add("staff-section-half");
   table(
     staffSection,
     [
@@ -151,7 +173,7 @@ export async function render() {
             "บทบาทใหม่: superadmin, reception, accounting, management, housekeeping",
             r.role,
           );
-          if (!role) return;
+          if (!role) return false;
           await api(`/api/staff/${r.id}`, { method: "PATCH", body: { role } });
         },
         refresh: render,
@@ -179,8 +201,13 @@ export async function render() {
       await api("/api/staff", { method: "POST", body: values });
       await render();
     },
+    "เพิ่มพนักงาน",
+    { help: "กำหนดสิทธิ์ตามหน้าที่ และใช้รหัสผ่านอย่างน้อย 10 ตัวอักษร" },
   );
-  const roomSection = section("ความเสียหายและห้องปิดซ่อม");
+  const roomSection = section(
+    "ความเสียหายและห้องปิดซ่อม",
+    "ตรวจรายงานก่อนปิดซ่อม ระบุช่วงวันที่และเหตุผลให้ชัดเจน",
+  );
   table(
     roomSection,
     [
@@ -213,6 +240,10 @@ export async function render() {
       await render();
     },
     "ปิดห้อง",
+    {
+      intent: "danger",
+      help: "ใช้รหัสภายในห้องจากผู้ดูแลระบบ การปิดซ่อมมีผลต่อความพร้อมของห้องในช่วงวันที่เลือก",
+    },
   );
   form(
     roomSection,
@@ -223,10 +254,11 @@ export async function render() {
       await render();
     },
     "เปิดห้อง",
+    { help: "ยืนยันว่าการซ่อมเสร็จและห้องพร้อมใช้งานก่อนเปิดกลับเข้าสู่ระบบ" },
   );
   form(
     roomSection,
-    "อนุมัติย้ายห้องฉุกเฉินหลัง Check-in",
+    "ย้ายห้องฉุกเฉิน",
     [
       { name: "bookingId", label: "เลขการจอง", type: "number", min: 1 },
       {
@@ -246,9 +278,13 @@ export async function render() {
       await render();
     },
     "อนุมัติย้าย",
+    { help: "ใช้สำหรับผู้เข้าพักที่เช็คอินแล้ว ระบุรายการห้อง ห้องใหม่ และเหตุผลการย้าย" },
   );
   note(roomSection, "เมื่อห้องที่จัดไว้ใช้ไม่ได้ ระบบบันทึกข้อเสนอห้องทดแทนให้ลูกค้าตัดสินใจ");
-  const auditSection = section("ประวัติทุกฝ่าย");
+  const auditSection = section(
+    "ประวัติทุกฝ่าย",
+    "แสดง 80 รายการล่าสุดสำหรับตรวจสอบผู้ดำเนินการและเหตุผล",
+  );
   table(
     auditSection,
     [
@@ -261,5 +297,29 @@ export async function render() {
       [(r) => JSON.stringify(r.afterValue ?? null), "หลัง"],
     ],
     audit.slice(0, 80),
+  );
+  roleOverview(
+    "ตัดสินใจและดูแลความพร้อมโรงแรม",
+    "ฝ่ายบริหารอนุมัติคืนเงิน ดูแลสิทธิ์และห้องปิดซ่อม ส่วนการบันทึกคืนเงินดำเนินการโดยฝ่ายบัญชี",
+    [
+      {
+        label: "คำขอคืนรอตัดสินใจ",
+        value: refunds.filter((item) => item.status === "requested").length,
+        target: refundSection,
+        detail: "ตรวจเหตุผลและยอดก่อนอนุมัติหรือปฏิเสธ",
+      },
+      {
+        label: "รายงานความเสียหาย",
+        value: damage.length,
+        target: roomSection,
+        detail: "เปิดดูรายงานเพื่อพิจารณาความพร้อมของห้อง",
+      },
+      {
+        label: "บัญชีพนักงาน",
+        value: staff.length,
+        target: staffSection,
+        detail: "ตรวจบทบาทและสถานะการใช้งาน",
+      },
+    ],
   );
 }

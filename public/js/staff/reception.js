@@ -4,6 +4,7 @@ import {
   clear,
   section,
   metricGrid,
+  roleOverview,
   table,
   form,
   note,
@@ -14,7 +15,14 @@ import {
   busy,
 } from "./common.js";
 let activeThread = null;
+let chatTimer = null;
+function stopChatPolling() {
+  clearInterval(chatTimer);
+  chatTimer = null;
+}
+window.addEventListener("pagehide", stopChatPolling);
 export async function render() {
+  stopChatPolling();
   clear();
   const [overview, bookings, rooms, chats, tasks, damage] = await Promise.all([
     api("/api/reports/overview"),
@@ -32,11 +40,11 @@ export async function render() {
   ]);
   const queue = section(
     "งานหน้าเคาน์เตอร์",
-    "ตรวจยอดคงเหลือ ห้องพร้อม และเวลา ก่อน Check-in",
+    "เปิดรายละเอียดเพื่อตรวจยอดค้างชำระและห้องที่จัดไว้ ก่อนยืนยันเข้าพักหรือเช็คเอาท์",
   );
   const detail = node("div", "", "panel");
   detail.style.marginTop = "1rem";
-  detail.append(node("p", "เลือกรายการจองเพื่อดูห้องและยอดคงเหลือ", "subtle"));
+  detail.append(node("p", "เลือกรายการจองเพื่อดูห้องและยอดค้างชำระ", "subtle"));
   table(
     queue,
     [
@@ -50,11 +58,12 @@ export async function render() {
     [
       {
         label: "รายละเอียด",
+        readOnly: true,
         run: async (r) => {
           const b = await api(`/api/bookings/${r.id}`);
           detail.replaceChildren(
             node("h3", `การจอง #${b.id} · ${b.customerName}`),
-            node("p", `ยอดคงเหลือ ${baht(b.balance)} · ${b.status}`),
+            node("p", `ยอดค้างชำระ ${baht(b.balance)} · ${b.status}`),
           );
           for (const room of b.rooms)
             detail.append(
@@ -67,18 +76,23 @@ export async function render() {
       },
       {
         label: "Check-in",
+        intent: "primary",
+        help: "ตรวจยอดและห้องพร้อมก่อนยืนยันเข้าพัก",
         when: (r) => r.status === "confirmed",
         run: (r) => api(`/api/bookings/${r.id}/check-in`, { method: "POST" }),
         refresh: render,
       },
       {
         label: "Check-out",
+        intent: "primary",
         when: (r) => r.status === "checked_in",
         run: (r) => api(`/api/bookings/${r.id}/check-out`, { method: "POST" }),
         refresh: render,
       },
       {
         label: "No-show",
+        intent: "danger",
+        help: "ใช้เมื่อยืนยันแล้วว่าผู้จองไม่เข้าพัก",
         when: (r) => r.status === "confirmed",
         run: (r) => api(`/api/bookings/${r.id}/no-show`, { method: "POST" }),
         refresh: render,
@@ -86,10 +100,14 @@ export async function render() {
     ],
   );
   queue.append(detail);
-  const actions = section("Walk-in และบริการหน้าเคาน์เตอร์");
-  form(
+  const actions = section(
+    "Walk-in และบริการหน้าเคาน์เตอร์",
+    "เลือกงานที่ต้องการเพื่อเปิดแบบฟอร์ม บริการเพิ่มเติมใช้กับการจองที่เช็คอินแล้ว",
+  );
+  let selectedCustomer = null;
+  const walkIn = form(
     actions,
-    "สร้าง Walk-in ชำระเต็มจำลอง",
+    "สร้าง Walk-in",
     [
       { name: "fullName", label: "ชื่อผู้จอง" },
       { name: "phone", label: "เบอร์โทร" },
@@ -104,6 +122,7 @@ export async function render() {
         method: "POST",
         body: {
           ...values,
+          customerId: selectedCustomer?.id,
           rooms: [{ typeId: values.typeId, guests: values.guests }],
         },
       });
@@ -115,7 +134,98 @@ export async function render() {
       await render();
     },
     "สร้าง Walk-in",
+    {
+      help: "รายการ Walk-in รับชำระเต็มจำนวนแบบจำลอง หลังสร้างต้องจัดห้องจริงก่อนเช็คอิน",
+    },
   );
+  const walkInForm = walkIn.box.querySelector("form");
+  const customerSearch = node("div", "", "walk-in-customer-search");
+  const searchLabel = node("label", "ค้นหาลูกค้าเดิม");
+  const customerQuery = document.createElement("input");
+  customerQuery.type = "search";
+  customerQuery.id = "walk-in-customer-query";
+  customerQuery.placeholder = "ชื่อ เบอร์โทร หรือเลขเอกสารเต็ม";
+  searchLabel.htmlFor = customerQuery.id;
+  const searchButton = node("button", "ค้นหา", "btn btn-outline");
+  searchButton.type = "button";
+  const searchHelp = node(
+    "small",
+    "ค้นหาอย่างน้อย 3 ตัวอักษร และตรวจสอบตัวตนก่อนเลือก",
+    "field-hint",
+  );
+  const searchResults = node("div", "", "walk-in-results");
+  searchResults.setAttribute("aria-live", "polite");
+  customerSearch.append(
+    searchLabel,
+    customerQuery,
+    searchButton,
+    searchHelp,
+    searchResults,
+  );
+  walkInForm.prepend(customerSearch);
+  function chooseCustomer(customer) {
+    selectedCustomer = customer;
+    for (const key of ["fullName", "phone", "identityReference"]) {
+      walkIn.inputs[key].required = !customer;
+      walkIn.inputs[key].parentElement.hidden = Boolean(customer);
+    }
+    searchResults.replaceChildren();
+    if (customer) {
+      const chosen = node(
+        "p",
+        `เลือก ${customer.fullName} · โทรลงท้าย ${customer.phoneLast4} · เอกสารลงท้าย ${customer.identityLast4}`,
+      );
+      const change = node("button", "เปลี่ยน / เพิ่มลูกค้าใหม่", "btn btn-outline");
+      change.type = "button";
+      change.addEventListener("click", () => chooseCustomer(null));
+      searchResults.append(chosen, change);
+    }
+  }
+  customerQuery.addEventListener("input", () => {
+    chooseCustomer(null);
+  });
+  customerQuery.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      searchButton.click();
+    }
+  });
+  searchButton.addEventListener("click", async () => {
+    chooseCustomer(null);
+    const query = customerQuery.value.trim();
+    if (query.length < 3) {
+      searchResults.replaceChildren(node("p", "กรุณาค้นหาอย่างน้อย 3 ตัวอักษร"));
+      return;
+    }
+    busy(searchButton, true);
+    try {
+      const customers = await api(
+        `/api/walk-in-customers?q=${encodeURIComponent(query)}`,
+      );
+      if (customerQuery.value.trim() !== query) return;
+      searchResults.replaceChildren();
+      if (!customers.length)
+        searchResults.append(node("p", "ไม่พบลูกค้า สามารถกรอกข้อมูลลูกค้าใหม่ด้านล่าง"));
+      if (customers.length === 20)
+        searchResults.append(
+          node("p", "แสดง 20 รายการแรก กรุณาค้นหาให้เฉพาะเจาะจงขึ้น"),
+        );
+      for (const customer of customers) {
+        const option = node(
+          "button",
+          `${customer.fullName} · โทรลงท้าย ${customer.phoneLast4} · เอกสารลงท้าย ${customer.identityLast4}`,
+          "btn btn-outline",
+        );
+        option.type = "button";
+        option.addEventListener("click", () => chooseCustomer(customer));
+        searchResults.append(option);
+      }
+    } catch (error) {
+      searchResults.replaceChildren(node("p", error.message));
+    } finally {
+      busy(searchButton, false);
+    }
+  });
   form(
     actions,
     "จัดห้อง Walk-in",
@@ -132,10 +242,13 @@ export async function render() {
       await render();
     },
     "จัดห้อง",
+    {
+      help: "ใช้เลขการจองและรหัสรายการห้องจากรายละเอียด พร้อมรหัสห้องจริงจากตารางสถานะห้อง",
+    },
   );
   form(
     actions,
-    "เพิ่มบริการหลัง Check-in พร้อมรับชำระจำลองทันที",
+    "เพิ่มบริการ",
     [
       { name: "bookingId", label: "เลขการจอง", type: "number", min: 1 },
       {
@@ -162,10 +275,11 @@ export async function render() {
       await render();
     },
     "เพิ่มและรับชำระ",
+    { help: "เพิ่มบริการหลังเช็คอินและรับชำระจำลองทันที ระบุวันที่สำหรับอาหารเช้า" },
   );
   form(
     actions,
-    "บันทึกผลติดต่อเมื่อมาช้ากว่าแจ้ง",
+    "บันทึกการติดต่อ",
     [
       { name: "bookingId", label: "เลขการจอง", type: "number", min: 1 },
       { name: "outcome", label: "ผลการติดต่อ", type: "textarea" },
@@ -177,10 +291,12 @@ export async function render() {
       });
       await render();
     },
+    "บันทึกการติดต่อ",
+    { help: "บันทึกผลการติดต่อผู้จองที่มาช้ากว่าเวลาที่แจ้ง เพื่อให้ทีมติดตามต่อได้" },
   );
   form(
     actions,
-    "ยกเลิกบริการตอน Check-in",
+    "ยกเลิกบริการ",
     [
       { name: "bookingId", label: "เลขการจอง", type: "number", min: 1 },
       {
@@ -200,9 +316,16 @@ export async function render() {
       });
       await render();
     },
-    "ส่งคำขอคืน 80% จำลอง",
+    "ขอคืนค่าบริการ",
+    {
+      intent: "danger",
+      help: "ใช้ตอนเช็คอิน ระบบส่งคำขอคืนค่าบริการ 80% แบบจำลองตามเงื่อนไข",
+    },
   );
-  const roomSection = section("สถานะห้องและประวัติ");
+  const roomSection = section(
+    "สถานะห้องและประวัติ",
+    "ค้นหาด้วยรหัสห้อง เพื่อดูข้อมูลห้องและประวัติการใช้งาน",
+  );
   table(
     roomSection,
     [
@@ -237,6 +360,7 @@ export async function render() {
       [
         {
           label: "ประวัติ",
+          readOnly: true,
           run: async (r) => {
             const h = await api(`/api/rooms/${r.id}/history`);
             searchResult.append(node("pre", JSON.stringify(h, null, 2)));
@@ -245,7 +369,11 @@ export async function render() {
       ],
     );
   });
-  const tourSection = section("เที่ยวตลาดกลางคืน");
+  const tourSection = section(
+    "เที่ยวตลาดกลางคืน",
+    "ตรวจรอบและจำนวนที่ว่างก่อนเพิ่มผู้ร่วมเที่ยวให้การจอง",
+  );
+  tourSection.classList.add("staff-section-half");
   form(
     tourSection,
     "ดูรอบเที่ยวตามวันที่",
@@ -268,6 +396,7 @@ export async function render() {
       tourSection.append(box);
     },
     "ดูรอบ",
+    { readOnly: true },
   );
   form(
     tourSection,
@@ -292,8 +421,13 @@ export async function render() {
       await render();
     },
     "จองรอบเที่ยว",
+    { help: "ตรวจรหัสรอบจากรายการตามวันที่ แล้วระบุชื่อหรือรหัสผู้ร่วมเที่ยวคั่นด้วยจุลภาค" },
   );
-  const chatSection = section("สนทนากับสมาชิก");
+  const chatSection = section(
+    "สนทนากับสมาชิก",
+    "เปิดแชตจากรายการเพื่ออ่านและตอบกลับสมาชิกในบทสนทนาเดิม",
+  );
+  chatSection.classList.add("staff-section-half");
   table(
     chatSection,
     [
@@ -306,6 +440,7 @@ export async function render() {
     [
       {
         label: "เปิดแชต",
+        readOnly: true,
         run: async (r) => {
           activeThread = r.threadId;
           await openChat(chatSection);
@@ -314,7 +449,10 @@ export async function render() {
     ],
   );
   if (activeThread) await openChat(chatSection);
-  const cleaning = section("งานแม่บ้านและความเสียหาย");
+  const cleaning = section(
+    "งานแม่บ้านและความเสียหาย",
+    "ติดตาม 30 รายการล่าสุดในแต่ละตาราง เพื่อประสานความพร้อมของห้อง",
+  );
   table(
     cleaning,
     [
@@ -336,23 +474,48 @@ export async function render() {
     ],
     damage.slice(0, 30),
   );
+  roleOverview(
+    "ดูแลการเข้าพักและการติดต่อสมาชิก",
+    "ฝ่ายต้อนรับตรวจการเข้าพัก จัดการ Walk-in และตอบแชต ส่วนการรับรองหลักฐานชำระเป็นหน้าที่ฝ่ายบัญชี",
+    [
+      {
+        label: "การจองที่ยืนยันแล้ว",
+        value: bookings.filter((item) => item.status === "confirmed").length,
+        target: queue,
+        detail: "ตรวจวันเข้าพัก ยอด และห้องก่อนเช็คอิน",
+      },
+      {
+        label: "รายการที่เข้าพักอยู่",
+        value: bookings.filter((item) => item.status === "checked_in").length,
+        target: queue,
+        detail: "ดูรายละเอียดเพื่อบริการหรือเช็คเอาท์",
+      },
+      {
+        label: "บทสนทนาที่มีข้อความ",
+        value: chats.filter((item) => item.messageCount).length,
+        target: chatSection,
+        detail: "เปิดบทสนทนาเพื่ออ่านและตอบสมาชิก",
+      },
+    ],
+  );
 }
 async function openChat(parent) {
-  const old = parent.querySelector(".chat-panel");
-  old?.remove();
+  stopChatPolling();
+  parent.querySelector(".chat-panel")?.remove();
+  const threadId = activeThread;
   const box = node("div", "", "panel chat-panel");
   box.style.marginTop = "1rem";
-  box.append(node("h3", `สนทนากับสมาชิก #${activeThread}`));
-  const messages = await api(`/api/chats/${activeThread}/messages`);
+  const close = node("button", "ปิดแชต", "btn btn-outline");
+  close.type = "button";
+  close.addEventListener("click", () => {
+    stopChatPolling();
+    activeThread = null;
+    box.remove();
+  });
+  box.append(node("h3", `สนทนากับสมาชิก #${threadId}`), close);
   const log = node("div", "", "chat-log");
-  for (const m of messages) {
-    const bubble = node(
-      "div",
-      `${m.senderRole === "reception" ? "ฝ่ายต้อนรับ" : "สมาชิก"}: ${m.content}`,
-      "chat-bubble",
-    );
-    log.append(bubble);
-  }
+  log.setAttribute("role", "log");
+  log.setAttribute("aria-label", "ข้อความสนทนา");
   box.append(log);
   const f = node("form", "", "field-row");
   f.style.marginTop = "1rem";
@@ -362,21 +525,59 @@ async function openChat(parent) {
   input.setAttribute("aria-label", "ข้อความตอบกลับ");
   const button = node("button", "ส่ง", "btn btn-dark");
   f.append(input, button);
+  box.append(f);
+  parent.append(box);
+  let requestNumber = 0;
+  async function refreshMessages() {
+    const request = ++requestNumber;
+    const messages = await api(`/api/chats/${threadId}/messages`);
+    if (
+      !box.isConnected ||
+      activeThread !== threadId ||
+      request !== requestNumber
+    )
+      return;
+    const contents = [];
+    if (!messages.length)
+      contents.push(
+        node("p", "ยังไม่มีข้อความ เริ่มสนทนาด้วยการส่งข้อความด้านล่าง", "subtle small"),
+      );
+    for (const m of messages)
+      contents.push(
+        node(
+          "div",
+          `${m.senderRole === "reception" ? "ฝ่ายต้อนรับ" : "สมาชิก"}: ${m.content}`,
+          `chat-bubble${m.senderRole === "reception" ? " staff-reply" : ""}`,
+        ),
+      );
+    log.replaceChildren(...contents);
+  }
   f.addEventListener("submit", async (e) => {
     e.preventDefault();
     busy(button, true);
     try {
-      await api(`/api/chats/${activeThread}/messages`, {
+      await api(`/api/chats/${threadId}/messages`, {
         method: "POST",
         body: { content: input.value },
       });
-      await openChat(parent);
+      input.value = "";
+      await refreshMessages();
     } catch (error) {
       status(feedback, error.message, "error");
     } finally {
       busy(button, false);
     }
   });
-  box.append(f);
-  parent.append(box);
+  await refreshMessages();
+  if (!box.isConnected || activeThread !== threadId) return;
+  chatTimer = setInterval(() => {
+    if (!box.isConnected) {
+      stopChatPolling();
+      return;
+    }
+    if (!document.hidden)
+      refreshMessages().catch((error) =>
+        status(feedback, error.message, "error"),
+      );
+  }, 15000);
 }

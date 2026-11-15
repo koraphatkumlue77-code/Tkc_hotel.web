@@ -1,0 +1,186 @@
+/* Native controls retain platform keyboard, calendar, and option behavior. */
+:is(.booking-search, .custom-booking-modal, .custom-login-modal)
+  :is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+    select,
+    textarea
+  ) {
+  min-width: 0;
+  min-height: 44px;
+  color: #102c48;
+  background-color: #f1f6fa;
+  border: 1px solid #a9bfce;
+  border-radius: 8px;
+  padding: 9px 12px;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+:is(.booking-search, .custom-booking-modal, .custom-login-modal)
+  :is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+    select,
+    textarea
+  ):hover {
+  border-color: #507895;
+  background-color: #fff;
+}
+:is(.booking-search, .custom-booking-modal, .custom-login-modal)
+  :is(input, select, textarea):focus-visible {
+  outline: 3px solid #eb8317;
+  outline-offset: 2px;
+  border-color: #0c5e94;
+  background-color: #fff;
+  box-shadow: 0 0 0 1px #0c5e94;
+}
+:is(.booking-search, .custom-booking-modal, .custom-login-modal) select {
+  appearance: none;
+  padding-right: 38px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%231b537b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 11px center;
+  background-repeat: no-repeat;
+}
+:is(.booking-search, .custom-booking-modal, .custom-login-modal) select option {
+  color: #102c48;
+  background: #f1f6fa;
+}
+:is(.booking-search, .custom-booking-modal) input[type="date"] {
+  font-variant-numeric: tabular-nums;
+  color-scheme: light;
+}
+:is(.booking-search, .custom-booking-modal)
+  input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  margin-left: 6px;
+  opacity: 0.8;
+}
+.booking-search > label {
+  gap: 6px;
+  font-weight: 600;
+  color: #35556c;
+}
+.booking-search select,
+.booking-search input {
+  width: 100%;
+  font-size: 15px;
+  font-weight: 600;
+}
+.booking-search .guest-control {
+  position: relative;
+}
+.booking-search .guest-control > svg {
+  display: none;
+}
+.custom-booking-modal .date-field,
+.custom-booking-modal .payment-channel-fields label {
+  display: grid;
+  gap: 6px;
+}
+.custom-booking-modal .date-field label,
+.custom-booking-modal .payment-channel-fields label,
+.custom-login-modal .login-input-group label {
+  color: #274c67;
+  font-size: 14px;
+  font-weight: 600;
+}
+.custom-booking-modal :is(.booking-choices, .booking-services) label {
+  gap: 9px;
+  border: 1px solid #a9bfce;
+  background: #f3f8fb;
+  color: #173a56;
+  border-radius: 8px;
+}
+.custom-booking-modal
+  :is(.booking-choices, .booking-services)
+  label:has(input:checked) {
+  border-color: #136994;
+  background: #e2f0f8;
+  box-shadow: inset 3px 0 #eb8317;
+  color: #103a59;
+}
+.custom-booking-modal
+  :is(.booking-choices, .booking-services)
+  label:has(input:focus-visible) {
+  outline: 3px solid #eb8317;
+  outline-offset: 2px;
+}
+.custom-booking-modal :is(input[type="checkbox"], input[type="radio"]) {
+  accent-color: #116b9a;
+}
+.attractions-heading select {
+  min-height: 44px;
+  appearance: none;
+  padding: 10px 40px 10px 14px;
+  color: #fff;
+  background: #153858
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23f4c38d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    no-repeat right 12px center;
+  border: 1px solid #a1b9c9;
+  border-radius: 8px;
+}
+.attractions-heading select option {
+  color: #102c48;
+  background: #fff;
+}
+.attractions-heading select:focus-visible {
+  outline: 3px solid #eb8317;
+  outline-offset: 3px;
+}
+@media (max-width: 767px) {
+  .booking-search > label {
+    padding-block: 2px;
+  }
+  .booking-search select,
+  .booking-search input {
+    font-size: 16px;
+  }
+  .booking-search input[type="date"] {
+    font-size: 14px;
+    padding-inline: 6px;
+  }
+  .custom-booking-modal .modal-dates-grid input[type="date"] {
+    width: 100%;
+    min-width: 0;
+    font-size: 14px;
+    padding-inline: 6px;
+  }
+  .custom-booking-modal
+    .modal-dates-grid
+    input[type="date"]::-webkit-calendar-picker-indicator {
+    width: 16px;
+    height: 16px;
+    margin-left: 2px;
+  }
+  .booking-search input[type="date"]::-webkit-calendar-picker-indicator {
+    width: 16px;
+    height: 16px;
+    margin-left: 2px;
+  }
+  .booking-search .room-field select {
+    font-size: 14px;
+    padding-left: 8px;
+    padding-right: 27px;
+    background-position: right 6px center;
+  }
+}
+@media (forced-colors: active) {
+  :is(
+      .booking-search,
+      .custom-booking-modal,
+      .custom-login-modal,
+      .attractions-heading
+    )
+    select {
+    appearance: auto;
+    background-image: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.booking-search, .custom-booking-modal, .custom-login-modal)
+    :is(input, select, textarea) {
+    transition: none;
+  }
+}

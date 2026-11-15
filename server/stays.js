@@ -195,14 +195,19 @@ export function stayRoutes(app) {
       const detail = await bookingDetail(pool, req.params.id);
       if (req.session.role === "reception" && detail.source !== "walk_in")
         fail(403, "ฝ่ายต้อนรับจัดห้อง Walk-in เท่านั้น");
-      await withTransaction((c) =>
-        assignRoom(c, {
+      await withTransaction(async (c) => {
+        const [[bookingRoom]] = await c.execute(
+          "SELECT id FROM booking_rooms WHERE id=? AND booking_id=? FOR UPDATE",
+          [req.body.bookingRoomId, req.params.id],
+        );
+        if (!bookingRoom) fail(404, "ไม่พบห้องในการจองนี้");
+        await assignRoom(c, {
           bookingRoomId: req.body.bookingRoomId,
           roomId: req.body.roomId,
           actorId: req.session.accountId,
           reason: req.body.reason,
-        }),
-      );
+        });
+      });
       res.json({ ok: true });
     }),
   );
@@ -232,25 +237,68 @@ export function stayRoutes(app) {
       res.json({ ok: true });
     }),
   );
+  app.get(
+    "/api/walk-in-customers",
+    requireRole("reception"),
+    asyncRoute(async (req, res) => {
+      const query = typeof req.query.q === "string" ? req.query.q.trim() : "";
+      if (query.length < 3 || query.length > 80)
+        fail(400, "กรุณาค้นหาอย่างน้อย 3 ตัวอักษร");
+      const [rows] = await pool.execute(
+        "SELECT id, full_name AS fullName, RIGHT(phone, 4) AS phoneLast4, RIGHT(identity_reference, 4) AS identityLast4 FROM customers WHERE LOCATE(?, full_name) > 0 OR phone = ? OR identity_reference = ? ORDER BY full_name, id LIMIT 20",
+        [query, query, query],
+      );
+      res.set("Cache-Control", "no-store");
+      res.json(rows);
+    }),
+  );
   app.post(
     "/api/walk-ins",
     requireRole("reception"),
     asyncRoute(async (req, res) => {
-      const { fullName, phone, identityReference, rooms, checkIn, checkOut } =
-        req.body;
+      const {
+        customerId,
+        fullName,
+        phone,
+        identityReference,
+        rooms,
+        checkIn,
+        checkOut,
+      } = req.body;
       if (
+        !customerId &&
         ![fullName, phone, identityReference].every(
           (x) => typeof x === "string" && x.trim(),
         )
       )
         fail(400, "ข้อมูลผู้จองไม่ครบ");
       const result = await withTransaction(async (c) => {
-        const [customer] = await c.execute(
-          "INSERT INTO customers (full_name,phone,identity_reference) VALUES (?,?,?)",
-          [fullName, phone, identityReference],
-        );
+        let selectedCustomerId;
+        if (
+          customerId !== undefined &&
+          customerId !== null &&
+          customerId !== ""
+        ) {
+          if (
+            !Number.isSafeInteger(Number(customerId)) ||
+            Number(customerId) < 1
+          )
+            fail(400, "ข้อมูลลูกค้าไม่ถูกต้อง");
+          const [[customer]] = await c.execute(
+            "SELECT id FROM customers WHERE id=? FOR UPDATE",
+            [customerId],
+          );
+          if (!customer) fail(404, "ไม่พบลูกค้าที่เลือก");
+          selectedCustomerId = customer.id;
+        } else {
+          const [customer] = await c.execute(
+            "INSERT INTO customers (full_name,phone,identity_reference) VALUES (?,?,?)",
+            [fullName.trim(), phone.trim(), identityReference.trim()],
+          );
+          selectedCustomerId = customer.insertId;
+        }
         const booking = await createBookingHold(c, {
-          customerId: customer.insertId,
+          customerId: selectedCustomerId,
           rooms,
           checkIn,
           checkOut,
@@ -269,7 +317,7 @@ export function stayRoutes(app) {
           req.session.accountId,
           "Walk-in ชำระเต็มจำลอง",
         );
-        return booking;
+        return { ...booking, status: "confirmed" };
       });
       res.status(201).json(result);
     }),

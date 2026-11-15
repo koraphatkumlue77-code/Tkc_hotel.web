@@ -26,7 +26,7 @@ export async function addServiceAfterCheckIn(
   );
   if (existing.amount) fail(409, "บริการนี้ถูกเลือกแล้ว");
   const [rooms] = await connection.execute(
-    "SELECT br.type_id,t.breakfast_price AS breakfastPrice FROM booking_rooms br JOIN room_types t ON t.id=br.type_id WHERE br.booking_id=?",
+    "SELECT br.id,br.type_id,t.breakfast_price AS breakfastPrice FROM booking_rooms br JOIN room_types t ON t.id=br.type_id WHERE br.booking_id=?",
     [bookingId],
   );
   if (!rooms.length) fail(409, "ไม่พบห้องในรายการ");
@@ -39,9 +39,13 @@ export async function addServiceAfterCheckIn(
           ? 500
           : 300;
     charge += price;
-    await connection.execute(
+    const [service] = await connection.execute(
       "INSERT INTO booking_services (booking_id,kind,service_date,quantity,unit_price,total,created_by) VALUES (?,?,?,?,?,?,?)",
       [bookingId, kind, date, 1, price, price, actorId],
+    );
+    await connection.execute(
+      "INSERT INTO booking_service_rooms (service_id,booking_room_id) VALUES (?,?)",
+      [service.insertId, room.id],
     );
   }
   await connection.execute(
@@ -67,18 +71,16 @@ export function serviceRoutes(app) {
     "/api/bookings/:id/services",
     requireRole("reception"),
     asyncRoute(async (req, res) =>
-      res
-        .status(201)
-        .json(
-          await withTransaction((c) =>
-            addServiceAfterCheckIn(c, {
-              bookingId: req.params.id,
-              kind: req.body.kind,
-              date: req.body.date,
-              actorId: req.session.accountId,
-            }),
-          ),
+      res.status(201).json(
+        await withTransaction((c) =>
+          addServiceAfterCheckIn(c, {
+            bookingId: req.params.id,
+            kind: req.body.kind,
+            date: req.body.date,
+            actorId: req.session.accountId,
+          }),
         ),
+      ),
     ),
   );
 }

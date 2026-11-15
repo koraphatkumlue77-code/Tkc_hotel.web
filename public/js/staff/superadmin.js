@@ -4,6 +4,7 @@ import {
   clear,
   section,
   metricGrid,
+  roleOverview,
   table,
   form,
   note,
@@ -34,7 +35,10 @@ export async function render() {
     ["รอทำความสะอาด", overview.rooms.dirty],
     ["เรื่องชำระที่ติดตาม", escalations.length],
   ]);
-  const roomSection = section("ประเภทและห้องพัก");
+  const roomSection = section(
+    "ประเภทและห้องพัก",
+    "ตั้งค่าราคาและจำนวนผู้เข้าพัก เพิ่มประเภทก่อนเพิ่มห้องจริง แล้วค้นหารหัสห้องเพื่อตรวจสอบ",
+  );
   table(
     roomSection,
     [
@@ -49,8 +53,11 @@ export async function render() {
       {
         label: "แก้ราคา",
         run: async (r) => {
-          const price = Number(prompt("ราคาต่อคืนใหม่", r.nightlyPrice));
-          if (!Number.isInteger(price) || price < 0) return;
+          const value = prompt("ราคาต่อคืนใหม่", r.nightlyPrice);
+          if (value === null) return false;
+          const price = Number(value);
+          if (!value.trim() || !Number.isInteger(price) || price < 0)
+            throw new Error("กรุณาระบุราคาเป็นจำนวนเต็มที่ไม่ติดลบ");
           await api(`/api/rooms/types/${r.id}`, {
             method: "PATCH",
             body: { nightlyPrice: price },
@@ -79,6 +86,8 @@ export async function render() {
       await api("/api/rooms/types", { method: "POST", body: values });
       await render();
     },
+    "เพิ่มประเภทห้อง",
+    { help: "ราคาต่อคืนและราคาอาหารเช้าใช้สำหรับการคำนวณการจองตามเงื่อนไขของระบบ" },
   );
   form(
     roomSection,
@@ -98,6 +107,8 @@ export async function render() {
       await api("/api/rooms", { method: "POST", body: values });
       await render();
     },
+    "เพิ่มห้องจริง",
+    { help: "ใช้เลข # ของประเภทห้องจากตารางด้านบน และกำหนดรหัสห้องที่ไม่ซ้ำกัน" },
   );
   const search = document.createElement("form");
   search.className = "field-row";
@@ -129,8 +140,11 @@ export async function render() {
         {
           label: "แก้พื้นที่",
           run: async (r) => {
-            const areaSqm = Number(prompt("พื้นที่ ตร.ม.", r.areaSqm || ""));
-            if (!Number.isInteger(areaSqm)) return;
+            const value = prompt("พื้นที่ ตร.ม.", r.areaSqm || "");
+            if (value === null) return false;
+            const areaSqm = Number(value);
+            if (!value.trim() || !Number.isInteger(areaSqm) || areaSqm < 1)
+              throw new Error("กรุณาระบุพื้นที่เป็นจำนวนเต็มมากกว่าศูนย์");
             await api(`/api/rooms/${r.id}`, {
               method: "PATCH",
               body: { areaSqm },
@@ -143,7 +157,7 @@ export async function render() {
   });
   const bookingSection = section(
     "จัดห้องหลังบัญชีรับรอง",
-    "Superadmin จัดหรือเปลี่ยนเลขห้องจริงก่อน Check-in",
+    "ตรวจรายการห้องในใบจอง แล้วจัดเลขห้องจริงให้พร้อมก่อนเช็คอิน",
   );
   table(
     bookingSection,
@@ -159,7 +173,9 @@ export async function render() {
     ),
     [
       {
-        label: "ดูห้องในรายการ",
+        label: "ดูรายการห้อง",
+        readOnly: true,
+        help: "เปิดดูรหัสรายการห้องเพื่อนำไปจัดห้องจริง",
         run: async (r) => {
           const detail = await api(`/api/bookings/${r.id}`);
           const old = bookingSection.querySelector(".booking-room-detail");
@@ -200,6 +216,9 @@ export async function render() {
       await render();
     },
     "จัดห้อง",
+    {
+      help: "ใช้เลขการจองและรหัสรายการห้องจากปุ่มดูรายการห้อง รหัสห้องจริงหาได้จากช่องค้นหาด้านบน",
+    },
   );
   note(
     bookingSection,
@@ -221,8 +240,13 @@ export async function render() {
       await render();
     },
     "เสนอห้อง",
+    { help: "เสนอห้องใหม่เมื่อห้องเดิมใช้ไม่ได้ ผู้จองต้องพิจารณาข้อเสนอก่อนดำเนินการต่อ" },
   );
-  const escalationSection = section("ติดตามการตรวจชำระเกิน 30 นาที");
+  const escalationSection = section(
+    "ติดตามการชำระ",
+    "รายการที่รอตรวจเกิน 30 นาที ควรประสานฝ่ายบัญชีให้ตรวจหลักฐาน",
+  );
+  escalationSection.classList.add("staff-section-half");
   table(
     escalationSection,
     [
@@ -234,7 +258,11 @@ export async function render() {
     ],
     escalations,
   );
-  const attractionSection = section("สถานที่แนะนำตามฤดูกาล");
+  const attractionSection = section(
+    "สถานที่แนะนำตามฤดูกาล",
+    "จัดการข้อมูลที่แสดงบนเว็บไซต์ลูกค้า เปิดหรือซ่อนโดยไม่ลบข้อมูลเดิม",
+  );
+  attractionSection.classList.add("staff-section-half");
   table(
     attractionSection,
     [
@@ -258,11 +286,11 @@ export async function render() {
         label: "แก้คำอธิบาย",
         run: async (r) => {
           const description = prompt("คำอธิบายใหม่", r.description);
-          if (description)
-            await api(`/api/attractions/${r.id}`, {
-              method: "PATCH",
-              body: { description },
-            });
+          if (!description) return false;
+          await api(`/api/attractions/${r.id}`, {
+            method: "PATCH",
+            body: { description },
+          });
         },
         refresh: render,
       },
@@ -289,8 +317,12 @@ export async function render() {
       await api("/api/attractions", { method: "POST", body: values });
       await render();
     },
+    "เพิ่มสถานที่",
   );
-  const reviewSection = section("ตรวจรีวิว");
+  const reviewSection = section(
+    "ตรวจรีวิว",
+    "อ่านเนื้อหาก่อนซ่อนรีวิว และระบุเหตุผลสำหรับบันทึกการตรวจสอบ",
+  );
   table(
     reviewSection,
     [
@@ -302,20 +334,24 @@ export async function render() {
     reviews,
     [
       {
-        label: "ซ่อน",
+        label: "ซ่อนรีวิว",
+        intent: "danger",
         run: async (r) => {
           const reason = prompt("เหตุผลที่ซ่อนรีวิว");
-          if (reason)
-            await api(`/api/reviews/${r.id}/hide`, {
-              method: "POST",
-              body: { reason },
-            });
+          if (!reason) return false;
+          await api(`/api/reviews/${r.id}/hide`, {
+            method: "POST",
+            body: { reason },
+          });
         },
         refresh: render,
       },
     ],
   );
-  const staffSection = section("สิทธิ์พนักงานฝ่ายอื่น");
+  const staffSection = section(
+    "สิทธิ์พนักงานฝ่ายอื่น",
+    "จัดการฝ่ายต้อนรับ บัญชี และแม่บ้าน ส่วนสิทธิ์ผู้บริหารดูแลโดยฝ่ายบริหาร",
+  );
   table(
     staffSection,
     [
@@ -333,11 +369,11 @@ export async function render() {
             "บทบาทใหม่: reception, accounting, housekeeping",
             r.role,
           );
-          if (role)
-            await api(`/api/staff/${r.id}`, {
-              method: "PATCH",
-              body: { role },
-            });
+          if (!role) return false;
+          await api(`/api/staff/${r.id}`, {
+            method: "PATCH",
+            body: { role },
+          });
         },
         refresh: render,
       },
@@ -355,5 +391,33 @@ export async function render() {
       await api("/api/staff", { method: "POST", body: values });
       await render();
     },
+    "เพิ่มพนักงาน",
+    { help: "เลือกบทบาทตามหน้าที่ของพนักงาน บัญชีใหม่จะเข้าใช้งานผ่านหน้าเข้าสู่ระบบเดียวกัน" },
+  );
+  roleOverview(
+    "จัดห้องและดูแลข้อมูลโรงแรม",
+    "ผู้ดูแลระบบจัดห้องจริงและข้อมูลที่เผยแพร่ ส่วนการรับรองชำระและอนุมัติคืนเงินแยกตามฝ่ายที่รับผิดชอบ",
+    [
+      {
+        label: "ยืนยัน / รอห้องทดแทน",
+        value: bookings.filter((item) =>
+          ["confirmed", "replacement_pending"].includes(item.status),
+        ).length,
+        target: bookingSection,
+        detail: "ดูรายการห้องเพื่อตรวจการจัดห้องจริง",
+      },
+      {
+        label: "รายการติดตามการชำระ",
+        value: escalations.length,
+        target: escalationSection,
+        detail: "ตรวจรายการที่ส่งต่อให้ติดตามกับฝ่ายบัญชี",
+      },
+      {
+        label: "ประเภทห้องที่ดูแล",
+        value: types.length,
+        target: roomSection,
+        detail: "จัดราคา ความจุ และห้องพักแต่ละประเภท",
+      },
+    ],
   );
 }

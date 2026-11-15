@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=Noto+Serif+Thai:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=Noto+Serif+Thai:wght@400;500;600&display=swap");
 :root {
   --navy: #102c48;
   --navy-deep: #081c31;
@@ -6,21 +6,31 @@
   --surface: #fff;
   --paper: #f6f8f8;
   --mist: #e8eff2;
-  --coral: #e68467;
-  --coral-dark: #ca654a;
+  --coral: #eb8317;
+  --coral-dark: #99500a;
   --text: #1c3449;
   --muted: #637b8b;
   --line: #dbe4e8;
-  --focus: #f5a475;
+  --focus: #eb8317;
   --shadow: 0 18px 56px rgba(8, 28, 49, 0.12);
-  --serif: "Noto Serif Thai", Georgia, serif;
-  --sans: "DM Sans", "Noto Sans Thai", sans-serif;
+  --serif: "Noto Serif Thai", serif;
+  --sans: "Noto Sans Thai", sans-serif;
+  --success: #176342;
+  --success-surface: #e7f4ec;
+  --danger: #ac2838;
+  --danger-surface: #fcecf0;
+  --warning: #855008;
+  --warning-surface: #fff0d7;
 }
 * {
   box-sizing: border-box;
 }
 html {
   scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+html::-webkit-scrollbar {
+  display: none;
 }
 body {
   margin: 0;
@@ -136,7 +146,7 @@ fieldset {
   color: var(--navy-deep);
 }
 .btn-primary:hover {
-  background: #f09b80;
+  background: #f4a24c;
 }
 .btn-dark {
   background: var(--navy);
@@ -172,10 +182,9 @@ fieldset {
   color: var(--muted);
 }
 .status {
-  padding: 0.9rem 1.1rem;
-  border: 1px solid var(--line);
+  padding: 0rem 1.1rem;
   border-radius: 8px;
-  background: #fff;
+  color: var(--coral);
 }
 .status.error {
   border-color: #e6aea5;
@@ -187,10 +196,10 @@ fieldset {
   background: #edf9f2;
   color: #1e6541;
 }
-.status.info {
+/* .status.info {
   border-color: #b6ccd6;
   background: #eef5f7;
-}
+} */
 .tag {
   display: inline-block;
   border: 1px solid currentColor;

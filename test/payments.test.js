@@ -23,14 +23,31 @@ test("payment remains pending until accounting approves the simulated deposit", 
         services: {},
       }),
     );
+    await assert.rejects(
+      withTransaction((c) =>
+        submitPaymentAttempt(c, {
+          bookingId: booking.id,
+          amount: booking.depositDue,
+          method: "online_demo",
+          channelDetail: "kbank",
+        }),
+      ),
+      (error) => error.status === 400,
+    );
     const payment = await withTransaction((c) =>
       submitPaymentAttempt(c, {
         bookingId: booking.id,
         amount: booking.depositDue,
         method: "online_demo",
+        channelDetail: "paypal",
       }),
     );
     assert.equal(payment.status, "pending_review");
+    const [[storedChannel]] = await pool.execute(
+      "SELECT channel_detail FROM payments WHERE id=?",
+      [payment.id],
+    );
+    assert.equal(storedChannel.channel_detail, "paypal");
     const [[held]] = await pool.execute(
       "SELECT status FROM bookings WHERE id=?",
       [booking.id],

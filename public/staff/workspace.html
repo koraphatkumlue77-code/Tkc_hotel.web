@@ -4,17 +4,24 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>พื้นที่พนักงาน | TKC Hotel</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/css/staff.css" />
     <link rel="stylesheet" href="/css/staff-improve.css" />
   </head>
   <body>
+    <a class="skip-link" href="#staff-content">ข้ามไปยังพื้นที่ทำงาน</a>
     <div class="staff-layout">
       <aside class="staff-sidebar">
-        <a class="brand" href="/"
-          ><span class="brand-mark">TKC</span
-          ><span>TKC<small>NEVER WEKES HOTEL</small></span></a
-        >
-        <div class="sidebar-caption">WORKSPACES</div>
+        <a class="brand" href="/" aria-label="TKC Hotel หน้าหลัก">
+          <img
+            class="brand-mark"
+            src="/assets/tkc-mark.svg"
+            alt=""
+            width="48"
+            height="48"
+          />
+          <span>TKC HOTEL<small>พื้นที่ทำงานของทีม</small></span>
+        </a>
         <nav id="staffNav" class="staff-nav" aria-label="พื้นที่พนักงาน">
           <a href="/staff/superadmin.html" data-role="superadmin">ผู้ดูแลระบบ</a
           ><a href="/staff/reception.html" data-role="reception">ฝ่ายต้อนรับ</a
@@ -22,14 +29,16 @@
           ><a href="/staff/management.html" data-role="management">ฝ่ายบริหาร</a
           ><a href="/staff/housekeeping.html" data-role="housekeeping">แม่บ้าน</a>
         </nav>
+        <nav
+          id="staffSections"
+          class="staff-section-nav"
+          aria-label="ไปยังส่วนงาน"
+        ></nav>
         <div class="bottom">
-          <p class="small">TKC Hotel · โครงงานจำลอง</p>
-          <button
-            id="staffLogout"
-            class="btn btn-outline"
-            type="button"
-            style="color: white; border-color: #688399"
-          >
+          <button id="staffLogout" class="btn btn-outline" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <use href="/assets/icons.svg#log-out" />
+            </svg>
             ออกจากระบบ
           </button>
         </div>
@@ -37,20 +46,47 @@
       <div class="staff-main">
         <header class="staff-topbar">
           <span class="breadcrumb"
-            >TKC HOTEL / <span id="breadcrumb">WORKSPACE</span></span
-          ><span id="staffUser" class="user"></span>
+            >พื้นที่ทำงาน <span aria-hidden="true">/</span>
+            <span id="breadcrumb">กำลังโหลด</span></span
+          >
+          <span id="staffUser" class="user"></span>
         </header>
-        <main class="staff-content">
+        <main id="staff-content" class="staff-content" tabindex="-1">
           <div class="staff-intro">
             <div>
-              <span class="eyebrow">HOTEL OPERATIONS</span>
               <h1 id="pageTitle">กำลังโหลด…</h1>
               <p id="pageSubtitle"></p>
             </div>
-            <a class="btn btn-outline" href="/">ดูเว็บไซต์ลูกค้า ↗</a>
+            <div class="staff-page-actions">
+              <span id="staffUpdated" class="staff-updated" aria-live="polite"
+                >กำลังโหลดข้อมูล…</span
+              >
+              <button
+                id="staffRefresh"
+                class="btn btn-outline"
+                type="button"
+                aria-label="โหลดข้อมูลพื้นที่ทำงานอีกครั้ง"
+                title="โหลดข้อมูลอีกครั้ง"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <use href="/assets/icons.svg#refresh-cw" />
+                </svg>
+              </button>
+              <a class="btn btn-outline" href="/"
+                >ดูเว็บไซต์ลูกค้า
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <use href="/assets/icons.svg#arrow-right" /></svg
+              ></a>
+            </div>
           </div>
-          <div id="staffStatus" class="staff-status" aria-live="polite"></div>
-          <div id="dashboard"></div>
+          <div
+            id="staffStatus"
+            class="staff-status"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          ></div>
+          <div id="dashboard" aria-busy="true"></div>
         </main>
       </div>
     </div>

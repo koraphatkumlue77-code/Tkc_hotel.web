@@ -7,7 +7,14 @@ const directory = join(dirname(fileURLToPath(import.meta.url)), "migrations");
 
 export async function migrate() {
   const connection = await pool.getConnection();
+  let locked = false;
   try {
+    const [[lock]] = await connection.query(
+      "SELECT GET_LOCK(CONCAT('tkc-migrate:', LEFT(SHA2(DATABASE(), 256), 40)), 30) AS acquired",
+    );
+    if (lock.acquired !== 1)
+      throw new Error("Database migration lock unavailable");
+    locked = true;
     await connection.query(
       "CREATE TABLE IF NOT EXISTS migrations (name VARCHAR(255) PRIMARY KEY, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
     );
@@ -30,7 +37,14 @@ export async function migrate() {
       ]);
     }
   } finally {
-    connection.release();
+    try {
+      if (locked)
+        await connection.query(
+          "SELECT RELEASE_LOCK(CONCAT('tkc-migrate:', LEFT(SHA2(DATABASE(), 256), 40)))",
+        );
+    } finally {
+      connection.release();
+    }
   }
 }
 

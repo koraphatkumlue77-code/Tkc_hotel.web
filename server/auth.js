@@ -132,6 +132,9 @@ export function authRoutes(app) {
       );
       req.session.accountId = accountId;
       req.session.role = "member";
+      await new Promise((resolve, reject) =>
+        req.session.save((error) => (error ? reject(error) : resolve())),
+      );
       res.status(201).json({ id: accountId, role: "member" });
     }),
   );
@@ -157,6 +160,9 @@ export function authRoutes(app) {
       );
       req.session.accountId = rows[0].id;
       req.session.role = rows[0].role;
+      await new Promise((resolve, reject) =>
+        req.session.save((error) => (error ? reject(error) : resolve())),
+      );
       res.json({ id: rows[0].id, role: rows[0].role });
     }),
   );

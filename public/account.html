@@ -3,160 +3,291 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>บัญชีของฉัน | TKC Hotel</title>
+    <title>โปรไฟล์และการจองของฉัน | TKC Hotel</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="stylesheet" href="/css/public.css" />
-    <link rel="stylesheet" href="/css/secondary-improve.css" />
+    <link rel="stylesheet" href="/css/account.css" />
   </head>
-  <body>
-    <div class="topline">TKC HOTEL · YOUR ACCOUNT</div>
+  <body class="account-page">
+    <a class="skip-link" href="#accountContent">ข้ามไปยังเนื้อหา</a>
     <header class="site-header">
       <div class="container inner">
-        <a class="brand" href="/"
-          ><span class="brand-mark">TKC</span
-          ><span>TKC<small>NEVER WEKES HOTEL</small></span></a
-        ><button
+        <a class="brand" href="/" aria-label="TKC Hotel หน้าแรก">
+          <img src="/assets/tkc-mark-navy.svg" width="48" height="48" alt="" />
+          <span>TKC HOTEL<small>NEVER WEKES HOTEL</small></span>
+        </a>
+        <button
           class="menu-toggle"
           type="button"
           aria-label="เปิดเมนู"
           aria-expanded="false"
           aria-controls="site-nav"
         >
-          ☰ เมนู
+          <svg
+            viewBox="0 0 24 24"
+            width="22"
+            height="22"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            aria-hidden="true"
+          >
+            <use href="/assets/icons.svg#menu" />
+          </svg>
+          เมนู
         </button>
-        <nav id="site-nav" class="site-nav">
-          <a href="/">หน้าแรก</a><a href="/rooms.html">ห้องพัก</a
-          ><a href="/booking.html">เริ่มจอง</a>
+        <nav id="site-nav" class="site-nav" aria-label="เมนูหลัก">
+          <a href="/">หน้าแรก</a><a href="/#rooms">ห้องพัก</a>
+          <a href="/account.html" aria-current="page">โปรไฟล์ของฉัน</a>
         </nav>
       </div>
     </header>
-    <main>
-      <section class="page-hero">
+    <main id="accountContent">
+      <section class="account-hero">
         <div class="container">
-          <span class="eyebrow">YOUR TKC</span>
-          <h1>ทุกช่วงเวลาของคุณ<br />อยู่ที่นี่</h1>
-          <p>ดูสถานะการจอง การชำระแบบจำลอง และติดต่อฝ่ายต้อนรับได้ในที่เดียว</p>
+          <div>
+            <h1>โปรไฟล์ของฉัน</h1>
+            <p>จัดการการเข้าพักและติดตามทุกการจองของคุณ</p>
+          </div>
+          <a class="hero-home" href="/#rooms"
+            >ค้นหาห้องพัก
+            <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+              <use href="/assets/icons.svg#arrow-right" /></svg
+          ></a>
         </div>
       </section>
       <div class="container account-layout">
-        <div id="accountStatus" aria-live="polite"></div>
-        <section id="authSection" class="account-grid">
-          <form id="loginForm" class="panel stack">
-            <span class="eyebrow">WELCOME BACK</span>
-            <h2 style="font-size: 1.8rem">เข้าสู่ระบบ</h2>
-            <div>
-              <label for="loginEmail">อีเมล</label
-              ><input
-                id="loginEmail"
-                type="email"
-                autocomplete="email"
-                required
-              />
-            </div>
-            <div>
-              <label for="loginPassword">รหัสผ่าน</label
-              ><input
-                id="loginPassword"
-                type="password"
-                autocomplete="current-password"
-                required
-              />
-            </div>
-            <button class="btn btn-primary" type="submit">เข้าสู่ระบบ →</button>
-          </form>
-          <form id="registerForm" class="panel stack">
-            <span class="eyebrow">JOIN TKC</span>
-            <h2 style="font-size: 1.8rem">สมัครสมาชิก</h2>
-            <div class="field-row">
-              <div>
-                <label for="fullName">ชื่อผู้จอง</label
-                ><input id="fullName" required />
-              </div>
-              <div>
-                <label for="phone">เบอร์โทร</label
-                ><input id="phone" type="tel" required />
-              </div>
-            </div>
-            <div>
-              <label for="identityReference">เลขบัตรหรือพาสปอร์ตสมมติ</label
-              ><input
-                id="identityReference"
-                required
-                placeholder="เช่น DEMO-12345"
-              /><small class="subtle">โปรดใช้ข้อมูลตัวอย่างสำหรับโครงงาน</small>
-            </div>
-            <div>
-              <label for="registerEmail">อีเมล</label
-              ><input
-                id="registerEmail"
-                type="email"
-                autocomplete="email"
-                required
-              />
-            </div>
-            <div>
-              <label for="registerPassword">รหัสผ่าน (อย่างน้อย 10 ตัว)</label
-              ><input
-                id="registerPassword"
-                type="password"
-                minlength="10"
-                autocomplete="new-password"
-                required
-              />
-            </div>
-            <button class="btn btn-dark" type="submit">สร้างบัญชี →</button>
-          </form>
+        <div
+          id="accountStatus"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        ></div>
+        <section id="authSection" class="panel account-loading">
+          <h2>กำลังเปิดโปรไฟล์ของคุณ</h2>
+          <p class="subtle">
+            กรุณารอสักครู่ หากยังไม่ได้เข้าสู่ระบบ สามารถเริ่มต้นได้ที่หน้าแรก
+          </p>
+          <a class="btn btn-dark" href="/?login=1&amp;next=%2Faccount.html"
+            >เข้าสู่ระบบ</a
+          >
         </section>
         <section id="memberSection" hidden>
-          <div class="section-heading">
+          <div class="section-heading account-welcome">
             <div>
-              <span class="eyebrow">MY STAYS</span>
               <h2 id="welcomeName">การเข้าพักของฉัน</h2>
+              <p id="memberInfo" class="subtle"></p>
             </div>
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap">
-              <a class="btn btn-primary" href="/booking.html">จองห้องเพิ่ม</a
-              ><button id="logoutButton" class="btn btn-outline" type="button">
+            <div class="account-actions">
+              <a class="btn btn-outline" href="/?book=1#rooms"
+                ><svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+                  <use href="/assets/icons.svg#plus" /></svg
+                >จองเพิ่ม</a
+              >
+              <button id="logoutButton" class="btn btn-outline" type="button">
+                <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+                  <use href="/assets/icons.svg#log-out" />
+                </svg>
                 ออกจากระบบ
               </button>
             </div>
           </div>
-          <div class="account-grid">
+          <div class="account-summary" aria-label="ภาพรวมการจอง">
             <div>
-              <h3>รายการจอง</h3>
-              <div id="bookingList" class="booking-list"></div>
+              <span id="allBookingsLabel">รายการจองทั้งหมด</span>
+              <strong id="allBookings">—</strong>
             </div>
-            <div id="bookingDetail" class="panel">
-              <p class="subtle">เลือกรายการจองเพื่อดูรายละเอียด</p>
+            <div>
+              <span id="activeBookingsLabel">การเข้าพักที่ยืนยันแล้ว</span>
+              <strong id="activeBookings">—</strong>
+            </div>
+            <div>
+              <span id="reviewBookingsLabel">รายการรอตรวจการชำระ</span>
+              <strong id="reviewBookings">—</strong>
             </div>
           </div>
-          <div class="panel" style="margin-top: 1.5rem">
-            <span class="eyebrow">FRONT DESK</span>
-            <h2 style="font-size: 1.7rem">แชตกับฝ่ายต้อนรับ</h2>
-            <div id="chatLog" class="chat-log" aria-live="polite"></div>
-            <form
-              id="chatForm"
-              class="field-row"
-              style="
-                grid-template-columns: 1fr auto;
-                align-items: end;
-                margin-top: 1rem;
-              "
-            >
-              <div>
-                <label for="chatMessage">ข้อความ</label
-                ><input id="chatMessage" maxlength="2000" required />
+          <div class="account-grid">
+            <aside class="booking-sidebar" aria-labelledby="bookingListTitle">
+              <div class="booking-list-heading">
+                <h2 id="bookingListTitle">รายการจองของฉัน</h2>
+                <button
+                  id="refreshBookings"
+                  class="refresh-button"
+                  type="button"
+                  aria-label="รีเฟรชสถานะการจอง"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="20"
+                    height="20"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    aria-hidden="true"
+                  >
+                    <use href="/assets/icons.svg#refresh-cw" />
+                  </svg>
+                </button>
               </div>
-              <button class="btn btn-dark" type="submit">ส่งข้อความ</button>
-            </form>
+              <p class="booking-filter-help">
+                เลือกสถานะเพื่อจำกัดรายการ หรือค้นหาด้วย #เลขการจองและวันที่เข้าพัก
+              </p>
+              <div class="booking-search">
+                <label for="bookingSearch">ค้นหาการจอง</label>
+                <div>
+                  <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+                    <use href="/assets/icons.svg#search" /></svg
+                  ><input
+                    id="bookingSearch"
+                    type="search"
+                    placeholder="เลขการจอง หรือวันที่"
+                    autocomplete="off"
+                  />
+                </div>
+              </div>
+              <div
+                id="bookingFilters"
+                class="booking-filters"
+                role="group"
+                aria-label="กรองสถานะการจอง"
+              >
+                <button type="button" data-filter="all" aria-pressed="true">
+                  ทั้งหมด
+                </button>
+                <button type="button" data-filter="action" aria-pressed="false">
+                  รอดำเนินการ
+                </button>
+                <button
+                  type="button"
+                  data-filter="upcoming"
+                  aria-pressed="false"
+                >
+                  ยืนยันแล้ว
+                </button>
+                <button type="button" data-filter="closed" aria-pressed="false">
+                  สิ้นสุดแล้ว
+                </button>
+              </div>
+              <p class="booking-status-help">
+                <span class="status-dot waiting" aria-hidden="true"></span
+                >รอดำเนินการรวมรายการรอชำระ รอตรวจชำระ และรอเลือกห้องทดแทน
+              </p>
+              <p
+                id="bookingResultCount"
+                class="subtle small"
+                role="status"
+                aria-live="polite"
+              ></p>
+              <div id="bookingList" class="booking-list"></div>
+            </aside>
+            <section
+              id="bookingDetail"
+              class="panel booking-detail"
+              tabindex="-1"
+              aria-label="รายละเอียดการจอง"
+              aria-busy="false"
+            >
+              <p class="subtle">เลือกรายการจองเพื่อดูรายละเอียด</p>
+            </section>
           </div>
         </section>
       </div>
     </main>
-    <footer class="site-footer">
-      <div class="container">
-        <div class="footer-bottom" style="margin-top: 0">
-          <span>© TKC Hotel · Educational project</span
-          ><span>การชำระเงินทั้งหมดเป็นการจำลอง</span>
+    <button
+      id="chatLauncher"
+      class="account-chat-launcher"
+      type="button"
+      aria-label="แชตกับฝ่ายต้อนรับ"
+      aria-controls="accountChat"
+      aria-expanded="false"
+      hidden
+    >
+      <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+        <use href="/assets/icons.svg#message-circle" />
+      </svg>
+    </button>
+    <section
+      id="accountChat"
+      class="account-chat"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="chatTitle"
+      hidden
+    >
+      <div class="chat-heading">
+        <div>
+          <h2 id="chatTitle">ฝ่ายต้อนรับ TKC</h2>
+          <p>เราพร้อมช่วยเรื่องการเข้าพักของคุณ</p>
         </div>
+        <button
+          id="chatClose"
+          type="button"
+          class="chat-close"
+          aria-label="ปิดแชต"
+        >
+          <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+            <use href="/assets/icons.svg#x" />
+          </svg>
+        </button>
+      </div>
+      <div id="chatStatus" role="status" aria-live="polite"></div>
+      <div
+        id="chatLog"
+        class="chat-log"
+        role="log"
+        aria-label="บทสนทนากับฝ่ายต้อนรับ"
+        aria-live="polite"
+        aria-relevant="additions"
+      ></div>
+      <form id="chatForm" class="chat-form">
+        <div>
+          <label for="chatMessage">ข้อความถึงฝ่ายต้อนรับ</label
+          ><input
+            id="chatMessage"
+            maxlength="2000"
+            autocomplete="off"
+            required
+            placeholder="พิมพ์ข้อความของคุณ…"
+          />
+        </div>
+        <button class="chat-send" type="submit" aria-label="ส่งข้อความ">
+          <svg viewBox="0 0 24 24" class="icon" aria-hidden="true">
+            <use href="/assets/icons.svg#send" />
+          </svg>
+        </button>
+      </form>
+    </section>
+    <dialog
+      id="payment-confirm"
+      class="payment-confirm"
+      aria-labelledby="payment-confirm-title"
+      aria-describedby="payment-confirm-note"
+    >
+      <h2 id="payment-confirm-title">ตรวจสอบรายการชำระ</h2>
+      <dl class="payment-confirm-details">
+        <div>
+          <dt>ช่องทาง</dt>
+          <dd id="payment-confirm-channel"></dd>
+        </div>
+        <div>
+          <dt>ยอดที่ส่งตรวจสอบ</dt>
+          <dd id="payment-confirm-amount"></dd>
+        </div>
+      </dl>
+      <p id="payment-confirm-note">หลังส่งรายการ ฝ่ายบัญชีจะตรวจสอบก่อนนับยอดชำระ</p>
+      <form method="dialog" class="payment-confirm-actions">
+        <button type="submit" value="cancel" class="btn btn-outline">
+          กลับไปแก้ไข
+        </button>
+        <button type="submit" value="confirm" class="btn btn-dark">
+          ยืนยันและส่งรายการ
+        </button>
+      </form>
+    </dialog>
+    <footer class="site-footer">
+      <div class="container footer-bottom">
+        <span>© TKC Hotel</span
+        ><small>โครงงานเพื่อการศึกษา ไม่มีการรับชำระเงินจริง โปรดใช้ข้อมูลตัวอย่าง</small>
       </div>
     </footer>
     <script type="module" src="/js/account.js"></script>

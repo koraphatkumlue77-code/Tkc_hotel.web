@@ -15,55 +15,45 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=Noto+Serif+Thai:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/css/original.css" />
-    <link rel="stylesheet" href="/css/original-improve.css" />
-    <script type="module" src="/js/original-home.js"></script>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/css/customer-controls.css" />
+    <link rel="stylesheet" href="/css/booking-pickers.css" />
+    <script type="module" src="/script.js"></script>
+    <script type="module" src="/js/hero-rotation.js"></script>
+    <script type="module" src="/js/booking-pickers.js"></script>
+    <link rel="stylesheet" href="/css/hero-rotation.css" />
   </head>
   <body>
-    <svg class="svg-library" xmlns="http://www.w3.org/2000/svg">
-      <symbol id="calendar" viewBox="0 0 24 24">
-        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-        <line x1="16" y1="2" x2="16" y2="6" />
-        <line x1="8" y1="2" x2="8" y2="6" />
-        <line x1="3" y1="10" x2="21" y2="10" />
-      </symbol>
-      <symbol id="search" viewBox="0 0 24 24">
-        <circle cx="10.5" cy="10.5" r="7.5" />
-        <path d="m16 16 6 6" />
-      </symbol>
-      <symbol id="person" viewBox="0 0 24 24">
-        <circle cx="12" cy="7" r="4" />
-        <path d="M3 22v-3a9 9 0 0 1 18 0v3" />
-      </symbol>
-      <symbol id="chat" viewBox="0 0 24 24">
-        <path
-          d="M21 11c0 5-4 8-9 8H7l-5 3 1-6a8 8 0 0 1-1-5c0-5 4-9 10-9s9 4 9 9Z"
-        />
-        <path d="M7 10h.1M12 10h.1M17 10h.1" />
-      </symbol>
-      <symbol id="send" viewBox="0 0 24 24">
-        <path d="m22 2-7 20-4-9-9-4 20-7ZM11 13 22 2" />
-      </symbol>
-      <symbol id="palm" viewBox="0 0 48 48">
-        <path
-          d="M24 42c5-10 6-20 3-28M27 14C16 4 8 10 7 17c9-5 15-3 20-3ZM27 14C30 1 40 3 44 9c-9-1-12 1-17 5ZM27 14C12 16 11 25 14 28c4-8 8-10 13-14ZM27 14c12-2 17 4 16 11-5-6-11-9-16-11ZM4 42h40"
-        />
-      </symbol>
-      <symbol id="upload" viewBox="0 0 24 24">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-        <polyline points="17 8 12 3 7 8" />
-        <line x1="12" y1="3" x2="12" y2="15" />
-      </symbol>
-      <symbol id="lock" viewBox="0 0 24 24">
-        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-      </symbol>
-    </svg>
-
-    <!-- ==================== มุมมองหน้าเว็บลูกค้า (PUBLIC SITE) ==================== -->
+    <dialog
+      id="payment-confirm"
+      class="payment-confirm"
+      aria-labelledby="payment-confirm-title"
+      aria-describedby="payment-confirm-note"
+    >
+      <h2 id="payment-confirm-title">ตรวจสอบรายการชำระ</h2>
+      <dl class="payment-confirm-details">
+        <div>
+          <dt>ช่องทาง</dt>
+          <dd id="payment-confirm-channel"></dd>
+        </div>
+        <div>
+          <dt>ยอดที่ส่งตรวจสอบ</dt>
+          <dd id="payment-confirm-amount"></dd>
+        </div>
+      </dl>
+      <p id="payment-confirm-note">หลังส่งรายการ ฝ่ายบัญชีจะตรวจสอบก่อนนับยอดชำระ</p>
+      <form method="dialog" class="payment-confirm-actions">
+        <button type="submit" value="cancel">กลับไปแก้ไข</button>
+        <button type="submit" value="confirm" class="primary">
+          ยืนยันและส่งรายการ
+        </button>
+      </form>
+    </dialog>
+    <a class="skip-link" href="#main-content">ข้ามไปเนื้อหา</a>
     <div id="public-site-view">
       <header class="site-header">
         <button
@@ -73,10 +63,16 @@
           aria-controls="main-nav"
         >
           <span class="menu-label">ตัวเลือก</span>
-          <span class="hamburger">☰</span>
+          <svg aria-hidden="true"><use href="/assets/icons.svg#menu" /></svg>
         </button>
         <a class="brand" href="#home" aria-label="TKC หน้าหลัก">
-          <svg><use href="#palm" /></svg>
+          <img
+            class="brand-icon"
+            src="/assets/tkc-mark.svg"
+            width="48"
+            height="48"
+            alt=""
+          />
           <span><strong>TKC</strong><small>NEVER WEKES HOTEL</small></span>
         </a>
         <nav id="main-nav" aria-label="เมนูหลัก">
@@ -89,20 +85,20 @@
           <a href="#contact" data-page="contact">ติดต่อเจ้าหน้าที่</a>
         </nav>
         <div class="header-actions">
-          <!-- bykoraphat: แสดงรายการจองทางซ้ายของปุ่มเข้าสู่ระบบหลังล็อกอิน -->
+          <button class="login-button" data-login="ลูกค้า">
+            <svg aria-hidden="true"><use href="/assets/icons.svg#user" /></svg
+            ><span>เข้าสู่ระบบ</span>
+          </button>
           <button
-            type="button"
-            class="login-button"
-            id="my-bookings-button"
+            class="icon-button"
+            id="customer-sign-out"
+            aria-label="ออกจากระบบ"
+            title="ออกจากระบบ"
             hidden
           >
-            รายการจองของฉัน
-          </button>
-          <button class="login-button" data-login="ลูกค้า">
-            <svg><use href="#person" /></svg><span>เข้าสู่ระบบ</span>
-          </button>
-          <button class="login-button employee-login" data-login="พนักงาน">
-            <span>เข้าสู่ระบบพนักงาน</span>
+            <svg aria-hidden="true">
+              <use href="/assets/icons.svg#log-out" />
+            </svg>
           </button>
           <label class="language-label"
             ><span class="sr-only">ภาษา</span
@@ -114,17 +110,52 @@
         </div>
       </header>
 
-      <main>
+      <main id="main-content">
         <section
           class="hero"
           id="home"
           aria-label="ยินดีต้อนรับสู่ TKC Never Wekes Hotel"
         >
+          <video
+            class="hero-media"
+            id="hero-video"
+            autoplay
+            loop
+            muted
+            playsinline
+            preload="metadata"
+            poster="/assets/hero-poster.jpg"
+            aria-hidden="true"
+            tabindex="-1"
+          >
+            <source src="/assets/calm-pool-fhd.mp4" type="video/mp4" />
+          </video>
+          <video
+            class="hero-media hero-media-next"
+            id="hero-video-next"
+            loop
+            muted
+            playsinline
+            preload="none"
+            aria-hidden="true"
+            tabindex="-1"
+          >
+            <source src="/assets/beach-terrace-fhd.mp4" type="video/mp4" />
+          </video>
           <div class="hero-shade"></div>
           <div class="hero-title">
-            <span>TKC</span>
-            <h1>NEVER WEKES HOTEL</h1>
-            <p>ให้ทุกวันพักผ่อน เป็นช่วงเวลาที่พิเศษ</p>
+            <p class="hero-hotel">TKC NEVER WEKES HOTEL</p>
+            <h1 aria-label="ให้ทุกวันพักผ่อนเป็นช่วงเวลาที่พิเศษ">
+              ให้ทุกวันพักผ่อน<br /><span id="hero-phrase" aria-hidden="true"
+                >เป็นช่วงเวลาที่พิเศษ</span
+              >
+            </h1>
+            <p>เลือกห้องที่ใช่ แล้วใช้เวลากับสิ่งที่คุณรัก</p>
+            <a class="hero-link" href="#rooms"
+              >ค้นพบห้องพักของคุณ
+              <svg aria-hidden="true">
+                <use href="/assets/icons.svg#arrow-right" /></svg
+            ></a>
           </div>
           <form class="booking-search" id="search-form">
             <label class="room-field">
@@ -164,7 +195,9 @@
             <label class="guest-field">
               <span>จำนวนผู้ที่จะเข้าพัก</span>
               <span class="guest-control">
-                <svg><use href="#person" /></svg>
+                <svg aria-hidden="true">
+                  <use href="/assets/icons.svg#user" />
+                </svg>
                 <select id="guests" name="guests" aria-label="จำนวนผู้เข้าพัก">
                   <option value="1">1 คน</option>
                   <option value="2" selected>2 คน</option>
@@ -176,7 +209,9 @@
               </span>
             </label>
             <button class="primary search-button" type="submit">
-              <svg><use href="#search" /></svg>ค้นหา
+              <svg aria-hidden="true">
+                <use href="/assets/icons.svg#search" /></svg
+              >ค้นหา
             </button>
             <p id="search-error" class="form-error" role="alert"></p>
           </form>
@@ -185,13 +220,14 @@
         <section id="rooms" class="rooms-section section-shell">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">ROOMS & SUITES</p>
               <h2 id="rooms-title">เลือกห้องพักที่เหมาะกับคุณ</h2>
-              <!-- bykoraphat: หน่วยคิดราคาอาหารเช้า -->
               <p>อาหารเช้าคิดต่อห้องต่อวันที่เลือก</p>
             </div>
             <button id="reset-search" class="text-button" hidden>
-              ดูห้องพักทั้งหมด ↗
+              ดูห้องพักทั้งหมด
+              <svg aria-hidden="true">
+                <use href="/assets/icons.svg#arrow-right" />
+              </svg>
             </button>
           </div>
           <p id="results-status" class="results-status" role="status"></p>
@@ -201,11 +237,44 @@
             <p>ลองเปลี่ยนประเภทห้องหรือจำนวนผู้เข้าพัก</p>
             <button class="primary" id="empty-reset">ดูห้องพักทั้งหมด</button>
           </div>
+          <div
+            class="shared-room-amenities"
+            aria-label="สิ่งอำนวยความสะดวกที่มีในทุกห้อง"
+          >
+            <p>ความสบายที่มีให้ในทุกห้อง</p>
+            <ul>
+              <li>
+                <svg aria-hidden="true">
+                  <use href="/assets/icons.svg#wifi" />
+                </svg>
+                <span
+                  ><strong>Wi-Fi</strong><small>เชื่อมต่อได้ตลอดการพัก</small></span
+                >
+              </li>
+              <li>
+                <svg aria-hidden="true">
+                  <use href="/assets/icons.svg#air-vent" />
+                </svg>
+                <span
+                  ><strong>เครื่องปรับอากาศ</strong
+                  ><small>ปรับอุณหภูมิได้ตามสบาย</small></span
+                >
+              </li>
+              <li>
+                <svg aria-hidden="true">
+                  <use href="/assets/icons.svg#desk" />
+                </svg>
+                <span
+                  ><strong>โต๊ะทำงาน</strong
+                  ><small>พร้อมใช้งานในห้องพัก</small></span
+                >
+              </li>
+            </ul>
+          </div>
         </section>
 
         <section class="facilities section-shell" id="facilities">
           <div class="facility-header">
-            <p class="eyebrow">FACILITIES & EXPERIENCES</p>
             <h2>เติมเต็มทุกช่วงเวลาของคุณ</h2>
             <p>
               จองบริการภายในโรงแรมและทริปท่องเที่ยวได้โดยตรง บริการทริปตามวันและรอบที่ว่าง
@@ -214,13 +283,19 @@
 
           <div class="facility-grid">
             <article class="facility-card theme-green">
-              <div class="facility-hero-icon">🏋️‍♂️</div>
+              <img
+                class="facility-photo"
+                src="/assets/fitness.jpg"
+                alt="ภาพตัวอย่างห้องออกกำลังกาย"
+                loading="lazy"
+                width="600"
+                height="400"
+              />
               <div class="facility-content">
-                <small class="facility-tag">FITNESS CENTER</small>
                 <h3>ฟิตเนส</h3>
                 <p class="facility-desc">เปิดบริการตั้งแต่เวลา 07:00 - 21:30 น.</p>
                 <div class="facility-time">
-                  <svg><use href="#calendar" /></svg
+                  <svg><use href="/assets/icons.svg#calendar-days" /></svg
                   ><span>สามารถเลือกวันและเวลา</span>
                 </div>
                 <button class="facility-btn" data-facility="fitness">
@@ -230,13 +305,19 @@
             </article>
 
             <article class="facility-card theme-orange">
-              <div class="facility-hero-icon">🧖‍♀️</div>
+              <img
+                class="facility-photo"
+                src="/assets/sauna.jpg"
+                alt="ภาพตัวอย่างพื้นที่สปาและซาวน่า"
+                loading="lazy"
+                width="600"
+                height="400"
+              />
               <div class="facility-content">
-                <small class="facility-tag">SAUNA</small>
                 <h3>ซาวน่า</h3>
                 <p class="facility-desc">เปิดบริการตั้งแต่เวลา 07:00 - 21:30 น.</p>
                 <div class="facility-time">
-                  <svg><use href="#calendar" /></svg
+                  <svg><use href="/assets/icons.svg#calendar-days" /></svg
                   ><span>สามารถเลือกวันและเวลา</span>
                 </div>
                 <button class="facility-btn" data-facility="sauna">จอง</button>
@@ -244,14 +325,20 @@
             </article>
 
             <article class="facility-card theme-purple">
-              <div class="facility-hero-icon">🏊</div>
+              <img
+                class="facility-photo"
+                src="/assets/hotel-pool.jpg"
+                alt="ภาพตัวอย่างสระว่ายน้ำ"
+                loading="lazy"
+                width="600"
+                height="400"
+              />
               <div class="facility-content">
-                <small class="facility-tag">SWIMMING POOL</small>
                 <h3>สระว่ายน้ำ</h3>
                 <p class="facility-desc">รวมในค่าห้องพัก ไม่คิดเพิ่ม</p>
                 <div class="facility-time">
-                  <svg><use href="#calendar" /></svg
-                  ><span>รอบแรกเริ่ม 15:00 น.</span>
+                  <svg><use href="/assets/icons.svg#calendar-days" /></svg
+                  ><span>สอบถามเวลาเปิดบริการได้ที่ฝ่ายต้อนรับ</span>
                 </div>
                 <button class="facility-btn" data-facility="pool">
                   ดูรายละเอียด
@@ -260,17 +347,23 @@
             </article>
 
             <article class="facility-card theme-cyan">
-              <div class="facility-hero-icon">🌙</div>
+              <img
+                class="facility-photo"
+                src="/assets/night-market.jpg"
+                alt="ภาพบรรยากาศตลาดยามค่ำคืน"
+                loading="lazy"
+                width="600"
+                height="400"
+              />
               <div class="facility-content">
-                <small class="facility-tag">NIGHT MARKET</small>
                 <h3>ตลาดกลางคืน</h3>
                 <p class="facility-desc">เที่ยวชมสถานที่รอบโรงแรมตามฤดูกาล</p>
                 <div class="facility-time">
-                  <svg><use href="#calendar" /></svg
+                  <svg><use href="/assets/icons.svg#calendar-days" /></svg
                   ><span>ตรวจสอบรอบทริปที่ว่าง</span>
                 </div>
                 <button class="facility-btn" data-facility="market">
-                  ดูทริป
+                  ดูรายละเอียด
                 </button>
               </div>
             </article>
@@ -278,7 +371,6 @@
           <div class="attractions-area">
             <div class="attractions-heading">
               <div>
-                <p class="eyebrow">AROUND TKC</p>
                 <h3>สถานที่น่าแวะในฤดูกาลนี้</h3>
               </div>
               <label
@@ -294,13 +386,44 @@
             <div
               id="attraction-list"
               class="attraction-list"
-              aria-live="polite"
+              aria-label="สถานที่แนะนำ เลือกเพื่ออ่านรายละเอียด"
             ></div>
+            <div class="attraction-controls">
+              <p>ภาพบรรยากาศและเส้นทางตัวอย่างสำหรับวางแผนวันพักผ่อน</p>
+              <div>
+                <button
+                  id="attraction-prev"
+                  class="icon-button"
+                  type="button"
+                  disabled
+                  aria-label="สถานที่ก่อนหน้า"
+                >
+                  <svg aria-hidden="true">
+                    <use href="/assets/icons.svg#arrow-right" />
+                  </svg>
+                </button>
+                <span
+                  id="attraction-position"
+                  role="status"
+                  aria-live="polite"
+                ></span>
+                <button
+                  id="attraction-next"
+                  class="icon-button"
+                  type="button"
+                  disabled
+                  aria-label="สถานที่ถัดไป"
+                >
+                  <svg aria-hidden="true">
+                    <use href="/assets/icons.svg#arrow-right" />
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
         </section>
 
         <section class="reviews section-shell" id="reviews">
-          <p class="eyebrow">GUEST STORIES</p>
           <h2>ช่วงเวลาดี ๆ จากผู้เข้าพัก</h2>
           <p class="demo-note" id="review-status">รีวิวจากสมาชิกหลังเข้าพัก</p>
           <div class="review-grid" id="review-grid"></div>
@@ -308,17 +431,28 @@
 
         <footer class="footer section-shell" id="contact">
           <div>
-            <p class="footer-brand">TKC</p>
+            <img
+              class="footer-logo"
+              src="/assets/tkc-mark.svg"
+              width="180"
+              height="180"
+              alt="TKC Never Wekes Hotel"
+            />
             <p>NEVER WEKES HOTEL</p>
             <small>ช่วงเวลาพักผ่อน ที่เป็นของคุณ</small>
           </div>
           <div>
             <h2>ติดต่อเจ้าหน้าที่</h2>
             <p>สอบถามห้องพัก การจอง และบริการของโรงแรม</p>
-            <button class="primary" data-open-chat>พูดคุยกับฝ่ายต้อนรับ ↗</button>
+            <button class="primary" data-open-chat>
+              พูดคุยกับฝ่ายต้อนรับ
+              <svg aria-hidden="true">
+                <use href="/assets/icons.svg#arrow-right" />
+              </svg>
+            </button>
           </div>
           <p class="prototype-note">
-            โครงงานโรงแรมจำลอง · การชำระเงินทั้งหมดเป็นการจำลอง ไม่มีการรับเงินจริง
+            TKC Never Wekes Hotel · พร้อมดูแลทุกช่วงเวลาการพักผ่อนของคุณ
           </p>
         </footer>
       </main>
@@ -326,13 +460,17 @@
       <aside class="chat-panel" id="chat-panel" hidden aria-label="แชตฝ่ายต้อนรับ">
         <header>
           <div class="chat-avatar">
-            <svg><use href="#chat" /></svg><i></i>
+            <svg aria-hidden="true">
+              <use href="/assets/icons.svg#message-circle" /></svg
+            ><i></i>
           </div>
           <div>
             <h2>คุยกับฝ่ายต้อนรับ</h2>
             <p>เชื่อมต่อฝ่ายต้อนรับผ่านระบบสมาชิก</p>
           </div>
-          <button id="chat-close" aria-label="ปิดแชต">×</button>
+          <button id="chat-close" class="icon-button" aria-label="ปิดแชต">
+            <svg aria-hidden="true"><use href="/assets/icons.svg#x" /></svg>
+          </button>
         </header>
         <div
           class="chat-messages"
@@ -341,7 +479,7 @@
           aria-live="polite"
         >
           <p class="message staff">
-            สวัสดีค่ะ ยินดีต้อนรับสู่ TKC 🌴<br />สนใจสอบถามห้องพักหรือบริการด้านไหนคะ?
+            สวัสดีค่ะ ยินดีต้อนรับสู่ TKC<br />สนใจสอบถามห้องพักหรือบริการด้านไหนคะ?
           </p>
         </div>
         <form id="chat-form">
@@ -354,7 +492,7 @@
             autocomplete="off"
           />
           <button class="primary" aria-label="ส่งข้อความ">
-            <svg><use href="#send" /></svg>
+            <svg aria-hidden="true"><use href="/assets/icons.svg#send" /></svg>
           </button>
         </form>
       </aside>
@@ -364,29 +502,33 @@
         id="chat-toggle"
         aria-expanded="false"
         aria-controls="chat-panel"
+        aria-label="พูดคุยกับฝ่ายต้อนรับ"
       >
-        <svg><use href="#chat" /></svg><span>พูดคุยกับพนักงาน</span>
+        <svg aria-hidden="true">
+          <use href="/assets/icons.svg#message-circle" />
+        </svg>
       </button>
     </div>
-
-    <!-- ==================== MODALS ==================== -->
-    <!-- bykoraphat: จองหลายห้อง อาหารเช้า และชำระเงิน -->
     <dialog
       id="booking-dialog"
       class="custom-booking-modal"
       aria-labelledby="booking-heading"
     >
-      <button class="modal-circle-close" data-close aria-label="ปิด">✕</button>
+      <button class="modal-circle-close" data-close aria-label="ปิด">
+        <svg aria-hidden="true"><use href="/assets/icons.svg#x" /></svg>
+      </button>
       <div class="modal-header-custom">
-        <h2 id="booking-heading">จองห้องพัก</h2>
+        <p class="booking-intro">วันพักผ่อนของคุณ เริ่มต้นตรงนี้</p>
+        <h2 id="booking-heading">จัดวันพักผ่อนของคุณ</h2>
+        <p>เลือกวัน ห้องพัก และบริการ แล้วตรวจสอบยอดก่อนยืนยัน</p>
       </div>
 
       <form id="booking-form" class="modal-booking-body">
         <div class="room-preview-box">
           <img
             id="modal-room-img"
-            src=""
-            alt="Room preview"
+            src="/assets/room-standard.jpg"
+            alt="ตัวอย่างห้องพัก"
             class="room-preview-img"
           />
           <div class="room-preview-details">
@@ -407,7 +549,7 @@
             <input type="date" id="modal-checkin" required />
           </div>
           <div class="date-field">
-            <label for="modal-checkout">เช็คเอ้าท์</label>
+            <label for="modal-checkout">เช็คเอาท์</label>
             <input type="date" id="modal-checkout" required />
           </div>
         </div>
@@ -451,7 +593,7 @@
               <dd id="booking-room-total">0 บาท</dd>
             </div>
             <div>
-              <dt>ค่าอาหารเช้า</dt>
+              <dt>บริการเพิ่มเติม</dt>
               <dd id="booking-breakfast-total">0 บาท</dd>
             </div>
             <div>
@@ -476,7 +618,11 @@
             >
           </fieldset>
           <fieldset class="booking-choices">
-            <legend>วิธีชำระเงินจำลอง</legend>
+            <legend>วิธีชำระเงิน</legend>
+            <label
+              ><input type="radio" name="payment_method" value="later" />
+              ชำระภายหลัง</label
+            >
             <label
               ><input
                 type="radio"
@@ -484,7 +630,7 @@
                 value="online_demo"
                 checked
               />
-              ออนไลน์จำลอง</label
+              ชำระออนไลน์</label
             >
             <label
               ><input
@@ -492,21 +638,53 @@
                 name="payment_method"
                 value="transfer_demo"
               />
-              โอนจำลองพร้อมรูปหลักฐานตัวอย่าง</label
+              โอนพร้อมหลักฐานการชำระ</label
             >
           </fieldset>
+          <div class="payment-channel-fields">
+            <label id="booking-online-row" for="booking-online-channel"
+              >ประเภทการชำระ
+              <select id="booking-online-channel">
+                <option value="credit">บัตรเครดิต</option>
+                <option value="debit">บัตรเดบิต</option>
+                <option value="paypal">PayPal</option>
+              </select>
+            </label>
+            <label id="booking-bank-row" for="booking-bank-channel" hidden
+              >ธนาคารผู้โอน
+              <select id="booking-bank-channel">
+                <option value="">เลือกธนาคาร</option>
+                <option value="bbl">ธนาคารกรุงเทพ</option>
+                <option value="kbank">ธนาคารกสิกรไทย</option>
+                <option value="scb">ธนาคารไทยพาณิชย์</option>
+                <option value="ktb">ธนาคารกรุงไทย</option>
+                <option value="other">ธนาคารอื่น</option>
+              </select>
+            </label>
+          </div>
+          <div
+            id="booking-channel-guide"
+            class="payment-channel-guide"
+            role="note"
+          >
+            <span class="payment-channel-guide-icon" aria-hidden="true">✓</span>
+            <div>
+              <strong id="booking-channel-title">บัตรเครดิต</strong>
+              <p id="booking-channel-copy">ตรวจสอบยอดและช่องทางก่อนส่งรายการ</p>
+            </div>
+          </div>
           <p class="demo-note">
-            ใช้รูปตัวอย่างเมื่อเลือกโอนจำลอง หรือเลือกออนไลน์จำลองโดยไม่แนบไฟล์
+            ส่งรายการให้ฝ่ายบัญชีตรวจสอบ แล้วติดตามผลได้ในโปรไฟล์ของคุณ
           </p>
           <div class="pay-details-row">
             <div class="bank-info">
-              <p class="bank-name">ช่องทางชำระจำลอง</p>
-              <p class="bank-acc">ไม่มีการโอนเงินจริง</p>
+              <p class="bank-name">ยืนยันการชำระ</p>
+              <p class="bank-acc">รอตรวจสอบจากฝ่ายบัญชี</p>
             </div>
             <div class="total-info">
               <p class="hotel-tag">TKC NEVER WEKES HOTEL</p>
               <p class="total-price">
-                ยอดที่ชำระจำลอง <strong id="modal-total-price">0</strong>
+                ยอดที่ต้องชำระ <strong id="modal-total-price">0</strong>
                 <span class="unit">บาท</span>
               </p>
             </div>
@@ -518,8 +696,10 @@
             id="slip-label"
             hidden
           >
-            <svg><use href="#upload" /></svg>
-            <span id="slip-file-name">อัปโหลดรูปหลักฐานตัวอย่าง</span>
+            <svg aria-hidden="true">
+              <use href="/assets/icons.svg#upload" />
+            </svg>
+            <span id="slip-file-name">แนบหลักฐานการชำระ</span>
           </label>
           <input
             type="file"
@@ -532,38 +712,68 @@
         </div>
 
         <button type="submit" class="submit-booking-btn">
-          กันห้องและส่งการชำระจำลอง
+          ยืนยันการจองและส่งการชำระ
         </button>
       </form>
     </dialog>
 
-    <!-- bykoraphat: สถานะรายการจองของลูกค้า -->
     <dialog
-      id="my-bookings-dialog"
-      class="custom-login-modal"
-      aria-labelledby="my-bookings-heading"
+      id="booking-result"
+      class="result-dialog"
+      aria-labelledby="result-heading"
     >
-      <button
-        type="button"
-        class="modal-circle-close"
-        data-close
-        aria-label="ปิด"
-      >
-        ✕
+      <button class="modal-circle-close" data-close aria-label="ปิด">
+        <svg aria-hidden="true"><use href="/assets/icons.svg#x" /></svg>
       </button>
-      <div class="login-header-custom">
-        <h2 id="my-bookings-heading">รายการจองของฉัน</h2>
+      <div class="result-symbol">
+        <svg aria-hidden="true">
+          <use href="/assets/icons.svg#check-circle-2" />
+        </svg>
       </div>
-      <p class="demo-note">รายการจองของคุณบันทึกในระบบ</p>
-      <div id="my-bookings-list"></div>
-      <button type="button" class="booking-outline" id="customer-sign-out">
-        ออกจากระบบ
-      </button>
+      <h2 id="result-heading">บันทึกการจองแล้ว</h2>
+      <p id="result-description" role="status"></p>
+      <ol class="booking-lifecycle">
+        <li class="done">กันห้อง</li>
+        <li>ตรวจสอบการชำระ</li>
+        <li>ยืนยันการจอง</li>
+      </ol>
+      <a class="primary" id="result-account" href="/account.html"
+        >ดูการจองในโปรไฟล์</a
+      >
+      <button class="text-button" data-close>กลับไปเลือกห้องพัก</button>
     </dialog>
-
-    <!-- Login Dialog -->
-    <dialog id="login-dialog" class="custom-login-modal">
-      <button class="modal-circle-close" data-close aria-label="ปิด">✕</button>
+    <dialog
+      id="experience-dialog"
+      class="experience-dialog"
+      aria-labelledby="experience-heading"
+    >
+      <button class="modal-circle-close" data-close aria-label="ปิด">
+        <svg aria-hidden="true"><use href="/assets/icons.svg#x" /></svg>
+      </button>
+      <img
+        id="experience-image"
+        src="/assets/hotel-pool.jpg"
+        alt=""
+        width="800"
+        height="500"
+      />
+      <div class="experience-content">
+        <h2 id="experience-heading"></h2>
+        <p id="experience-description"></p>
+        <p id="experience-note"></p>
+        <a id="experience-action" class="primary" href="/account.html#trips"
+          >ดูรอบและจองทริป</a
+        >
+      </div>
+    </dialog>
+    <dialog
+      id="login-dialog"
+      class="custom-login-modal"
+      aria-labelledby="login-title"
+    >
+      <button class="modal-circle-close" data-close aria-label="ปิด">
+        <svg aria-hidden="true"><use href="/assets/icons.svg#x" /></svg>
+      </button>
       <div class="login-header-custom">
         <h2 id="login-title">เข้าสู่ระบบ</h2>
       </div>
@@ -574,7 +784,7 @@
           <input
             type="email"
             id="login-email"
-            placeholder="ตัวอย่าง : pualbyoujud@gmail.com"
+            placeholder="ตัวอย่าง : guest@example.com"
             required
             autocomplete="username"
           />
@@ -585,7 +795,7 @@
           <input
             type="password"
             id="login-password"
-            placeholder="อย่างน้อย 8 ตัวอักษร"
+            placeholder="อย่างน้อย 10 ตัวอักษร"
             minlength="10"
             required
             autocomplete="current-password"
@@ -602,12 +812,16 @@
         </div>
       </form>
     </dialog>
-
-    <!-- Register Dialog -->
-    <dialog id="register-dialog" class="custom-login-modal">
-      <button class="modal-circle-close" data-close aria-label="ปิด">✕</button>
+    <dialog
+      id="register-dialog"
+      class="custom-login-modal"
+      aria-labelledby="register-heading"
+    >
+      <button class="modal-circle-close" data-close aria-label="ปิด">
+        <svg aria-hidden="true"><use href="/assets/icons.svg#x" /></svg>
+      </button>
       <div class="login-header-custom">
-        <h2>สมัครสมาชิก</h2>
+        <h2 id="register-heading">ลงทะเบียน &amp; เข้าสู่ระบบ</h2>
       </div>
       <form id="register-form" class="login-form-body register-form-compact">
         <div class="login-input-group">
@@ -628,12 +842,11 @@
             id="reg-email"
             name="email"
             maxlength="255"
-            placeholder="ตัวอย่าง : pualbyoujud@gmail.com"
+            placeholder="ตัวอย่าง : guest@example.com"
             required
             autocomplete="email"
           />
         </div>
-        <!-- bykoraphat: ข้อมูลติดต่อและเอกสารตาม Customer -->
         <div class="login-input-group">
           <label for="reg-phone">เบอร์โทร</label>
           <input
@@ -673,7 +886,6 @@
             autocomplete="new-password"
           />
         </div>
-        <!-- bykoraphat: ตรวจรหัสผ่านทั้งสองช่อง -->
         <div class="login-input-group">
           <label for="reg-confirm-password">ยืนยันรหัสผ่าน</label>
           <input
@@ -691,7 +903,9 @@
             hidden
           ></p>
         </div>
-        <button type="submit" class="submit-login-btn">เข้าสู่ระบบ</button>
+        <button type="submit" class="submit-login-btn">
+          ลงทะเบียน &amp; เข้าสู่ระบบ
+        </button>
         <div class="register-link-container">
           <span>มีบัญชีแล้ว ? </span>
           <a href="#login" id="back-to-login-link">เข้าสู่ระบบ</a>

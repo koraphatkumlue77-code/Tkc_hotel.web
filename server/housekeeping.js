@@ -261,9 +261,9 @@ export function housekeepingRoutes(app) {
     asyncRoute(async (req, res) => {
       const id = await withTransaction((c) =>
         closeRoomForRepair(c, {
+          ...req.body,
           roomId: req.params.id,
           managerId: req.session.accountId,
-          ...req.body,
         }),
       );
       res.status(201).json({ id });

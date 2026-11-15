@@ -12,8 +12,8 @@ export const dateLabel = (value) =>
     : "—";
 export const bookingStatusLabel = (value) =>
   ({
-    held: "กันห้องไว้",
-    pending_review: "รอตรวจชำระ",
+    held: "รอชำระเงิน",
+    pending_review: "กำลังตรวจสอบการชำระ",
     confirmed: "ยืนยันแล้ว",
     checked_in: "เข้าพักอยู่",
     checked_out: "เช็คเอาท์แล้ว",

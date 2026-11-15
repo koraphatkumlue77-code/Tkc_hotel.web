@@ -6,7 +6,14 @@ import { recordAudit } from "./audit.js";
 
 export async function submitPaymentAttempt(
   connection,
-  { bookingId, amount, method, evidencePath = null, now = new Date() },
+  {
+    bookingId,
+    amount,
+    method,
+    channelDetail = null,
+    evidencePath = null,
+    now = new Date(),
+  },
 ) {
   const [[booking]] = await connection.execute(
     "SELECT * FROM bookings WHERE id=? FOR UPDATE",
@@ -22,22 +29,29 @@ export async function submitPaymentAttempt(
     Number(amount) <= 0 ||
     !["transfer_demo", "online_demo", "reception_demo"].includes(method)
   )
-    fail(400, "ข้อมูลชำระจำลองไม่ถูกต้อง");
+    fail(400, "ข้อมูลการชำระไม่ถูกต้อง");
   if (method === "transfer_demo" && !evidencePath)
-    fail(400, "กรุณาแนบหลักฐานตัวอย่าง");
+    fail(400, "กรุณาแนบหลักฐานการโอน");
+  const allowedChannels = {
+    online_demo: ["credit", "debit", "paypal"],
+    transfer_demo: ["bbl", "kbank", "scb", "ktb", "other"],
+  };
+  if (channelDetail && !allowedChannels[method]?.includes(channelDetail))
+    fail(400, "ช่องทางชำระไม่ถูกต้อง");
   const [[totals]] = await connection.execute(
     "SELECT COALESCE(SUM(CASE WHEN status='approved' THEN amount ELSE 0 END),0) AS paid,COUNT(CASE WHEN status='pending_review' THEN 1 END) AS pending FROM payments WHERE booking_id=?",
     [bookingId],
   );
   if (Number(totals.pending) > 0) fail(409, "มีรายการรอบัญชีตรวจอยู่");
   if (Number(amount) > Number(booking.total) - Number(totals.paid))
-    fail(400, "ยอดที่ส่งเกินยอดคงเหลือ");
+    fail(400, "ยอดที่ส่งเกินยอดค้างชำระ");
   const [result] = await connection.execute(
-    "INSERT INTO payments (booking_id,amount,method,evidence_path,status,auto_check,submitted_at) VALUES (?,?,?,?,?,?,?)",
+    "INSERT INTO payments (booking_id,amount,method,channel_detail,evidence_path,status,auto_check,submitted_at) VALUES (?,?,?,?,?,?,?,?)",
     [
       bookingId,
       amount,
       method,
+      channelDetail,
       evidencePath,
       "pending_review",
       "รูปแบบและยอดถูกต้อง (จำลอง)",
@@ -159,7 +173,13 @@ export function paymentRoutes(app) {
       )
         fail(400, "ฝ่ายต้อนรับบันทึกได้เฉพาะชำระจำลองที่เคาน์เตอร์");
       const payment = await withTransaction((c) =>
-        submitPaymentAttempt(c, { bookingId: req.params.id, ...req.body }),
+        submitPaymentAttempt(c, {
+          bookingId: req.params.id,
+          amount: req.body.amount,
+          method: req.body.method,
+          channelDetail: req.body.channelDetail,
+          evidencePath: req.body.evidencePath,
+        }),
       );
       res.status(201).json({ ...payment, simulated: true });
     }),
@@ -169,7 +189,7 @@ export function paymentRoutes(app) {
     requireRole("accounting", "management", "superadmin"),
     asyncRoute(async (_req, res) => {
       const [rows] = await pool.query(
-        "SELECT p.id,p.booking_id AS bookingId,p.amount,p.method,p.evidence_path AS evidencePath,p.status,p.submitted_at AS submittedAt,TIMESTAMPDIFF(MINUTE,p.submitted_at,NOW()) AS waitingMinutes,c.full_name AS customerName FROM payments p JOIN bookings b ON b.id=p.booking_id JOIN customers c ON c.id=b.customer_id WHERE p.status='pending_review' ORDER BY p.submitted_at",
+        "SELECT p.id,p.booking_id AS bookingId,p.amount,p.method,p.channel_detail AS channelDetail,p.evidence_path AS evidencePath,p.status,p.submitted_at AS submittedAt,TIMESTAMPDIFF(MINUTE,p.submitted_at,NOW()) AS waitingMinutes,c.full_name AS customerName FROM payments p JOIN bookings b ON b.id=p.booking_id JOIN customers c ON c.id=b.customer_id WHERE p.status='pending_review' ORDER BY p.submitted_at",
       );
       res.json(rows);
     }),

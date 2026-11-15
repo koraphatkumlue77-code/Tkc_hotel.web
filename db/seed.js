@@ -14,8 +14,8 @@ const presentation = {
     "พื้นที่พักผ่อนที่เรียบง่ายและสงบ พร้อมรายละเอียดที่ใส่ใจในทุกมุม",
     "/assets/room-standard.jpg",
   ],
-  2: ["ห้องโปร่งสบายสำหรับการพักผ่อนที่มีพื้นที่มากขึ้น", "/assets/room-standard.jpg"],
-  3: ["ห้องพักดีไซน์อบอุ่นเพื่อช่วงเวลาที่พิเศษ", "/assets/room-family.jpg"],
+  2: ["ห้องโปร่งสบายสำหรับการพักผ่อนที่มีพื้นที่มากขึ้น", "/assets/room-superior.jpg"],
+  3: ["ห้องพักดีไซน์อบอุ่นเพื่อช่วงเวลาที่พิเศษ", "/assets/room-deluxe.jpg"],
   4: ["พื้นที่กว้างสำหรับครอบครัวและคนสำคัญ", "/assets/room-family.jpg"],
 };
 
@@ -86,6 +86,67 @@ export async function seed() {
         "INSERT INTO attractions (name,description,season,visible) VALUES (?,?,?,1)",
         ["ตลาดกลางคืน", "สัมผัสรสชาติและบรรยากาศท้องถิ่นหลังพระอาทิตย์ตก", "all"],
       );
+    }
+    // These illustrative seasonal destinations belong to the fictional hotel's demo content.
+    for (const [name, description, season, image] of [
+      [
+        "เส้นทางธรรมชาติหลังฝน",
+        "ตัวอย่างเส้นทางพักผ่อนท่ามกลางต้นไม้เขียวชอุ่ม ตรวจสอบสภาพอากาศและเส้นทางกับฝ่ายต้อนรับก่อนเดินทาง",
+        "rainy",
+        "/assets/season-rainy.jpg",
+      ],
+      [
+        "จุดชมวิวรับลมหนาว",
+        "ตัวอย่างจุดชมวิวสำหรับวันอากาศเย็น วางแผนเวลาเดินทางและสอบถามรายละเอียดกับฝ่ายต้อนรับ",
+        "winter",
+        "/assets/season-winter.jpg",
+      ],
+      [
+        "อ่าวน้ำใส",
+        "เส้นทางตัวอย่างสำหรับเดินเล่นริมอ่าว รับลมทะเลและพักผ่อนในวันที่อากาศแจ่มใส สอบถามสภาพอากาศกับฝ่ายต้อนรับก่อนออกเดินทาง",
+        "summer",
+        "/assets/season-bay.jpg",
+      ],
+      [
+        "เกาะและโลกใต้ทะเล",
+        "ไอเดียทริปชมเกาะและกิจกรรมทางทะเลในฤดูร้อน ตรวจสอบรอบเดินทาง อุปกรณ์ และความเหมาะสมของสภาพคลื่นก่อนจอง",
+        "summer",
+        "/assets/season-island.jpg",
+      ],
+      [
+        "น้ำตกกลางป่า",
+        "ตัวอย่างเส้นทางรับความสดชื่นท่ามกลางสายน้ำในฤดูฝน ควรตรวจสอบประกาศเปิดเส้นทางและเดินทางกับผู้ดูแลพื้นที่",
+        "rainy",
+        "/assets/season-waterfall.jpg",
+      ],
+      [
+        "สวนพฤกษชาติ",
+        "ไอเดียเดินชมพรรณไม้และมุมถ่ายภาพสีเขียวหลังฝน เลือกวันเดินทางที่เหมาะสมและเตรียมรองเท้าสำหรับเดินชมธรรมชาติ",
+        "rainy",
+        "/assets/season-garden.jpg",
+      ],
+      [
+        "ทะเลหมอกยามเช้า",
+        "ตัวอย่างจุดชมบรรยากาศหมอกในฤดูหนาว เตรียมเสื้อกันหนาวและสอบถามเวลาออกเดินทางกับฝ่ายต้อนรับ",
+        "winter",
+        "/assets/season-mist.jpg",
+      ],
+      [
+        "ทะเลสาบกลางหุบเขา",
+        "เส้นทางตัวอย่างสำหรับพักสายตาท่ามกลางผืนน้ำและวิวภูเขา เหมาะกับการวางแผนพักผ่อนในวันอากาศเย็น",
+        "winter",
+        "/assets/season-lake.jpg",
+      ],
+    ]) {
+      const [[existing]] = await connection.execute(
+        "SELECT id FROM attractions WHERE name=? LIMIT 1",
+        [name],
+      );
+      if (!existing)
+        await connection.execute(
+          "INSERT INTO attractions (name,description,season,image_url,visible) VALUES (?,?,?,?,1)",
+          [name, description, season, image],
+        );
     }
   });
 }

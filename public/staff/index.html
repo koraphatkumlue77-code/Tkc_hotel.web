@@ -1,63 +1,19 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="th">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>พื้นที่พนักงาน | TKC Hotel</title>
-    <link rel="stylesheet" href="/css/public.css" />
-    <link rel="stylesheet" href="/css/secondary-improve.css" />
+    <meta http-equiv="refresh" content="0;url=/?login=1" />
+    <title>เข้าสู่ระบบ | TKC Hotel</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/css/staff.css" />
   </head>
-  <body>
-    <div class="topline">TKC HOTEL · STAFF WORKSPACE</div>
-    <header class="site-header">
-      <div class="container inner">
-        <a class="brand" href="/"
-          ><span class="brand-mark">TKC</span
-          ><span>TKC<small>NEVER WEKES HOTEL</small></span></a
-        >
-        <nav class="site-nav" style="display: flex">
-          <a href="/">กลับเว็บไซต์ลูกค้า ↗</a>
-        </nav>
-      </div>
-    </header>
+  <body class="staff-entry">
     <main>
-      <section class="page-hero">
-        <div class="container">
-          <span class="eyebrow">TEAM ACCESS</span>
-          <h1>พื้นที่ทำงาน<br />ของทีม TKC</h1>
-          <p>ข้อมูลจากทุกฝ่ายเชื่อมกันผ่านฐานข้อมูลเดียวกัน การชำระและคืนเงินเป็นการจำลอง</p>
-        </div>
-      </section>
-      <div
-        class="container"
-        style="
-          max-width: 520px;
-          margin-top: -3rem;
-          position: relative;
-          padding-bottom: 5rem;
-        "
-      >
-        <form id="staffLogin" class="panel stack">
-          <span class="eyebrow">SIGN IN</span>
-          <h2 style="font-size: 1.8rem">เข้าสู่ระบบพนักงาน</h2>
-          <div id="loginStatus" aria-live="polite"></div>
-          <div>
-            <label for="email">อีเมล</label
-            ><input id="email" type="email" autocomplete="username" required />
-          </div>
-          <div>
-            <label for="password">รหัสผ่าน</label
-            ><input
-              id="password"
-              type="password"
-              autocomplete="current-password"
-              required
-            />
-          </div>
-          <button class="btn btn-primary" type="submit">เข้าสู่พื้นที่ทำงาน →</button>
-          <p class="demo-note">ใช้บัญชีพนักงานตัวอย่างจาก README ของโครงงาน</p>
-        </form>
-      </div>
+      <img src="/assets/tkc-mark.svg" width="64" height="64" alt="TKC Hotel" />
+      <h1>เข้าสู่ระบบ TKC Hotel</h1>
+      <p>ใช้บัญชีของคุณเพื่อเข้าสู่พื้นที่ทำงานตามสิทธิ์</p>
+      <a class="btn btn-dark" href="/?login=1">ไปหน้าเข้าสู่ระบบ</a>
     </main>
     <script type="module" src="/js/staff/login.js"></script>
   </body>
