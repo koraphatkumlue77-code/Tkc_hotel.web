@@ -124,6 +124,11 @@ test("real MySQL legacy preflight and deterministic reset", async (context) => {
         .slice(canonicalSql.indexOf("-- [PLAN B-01]"), canonicalSql.indexOf("-- PLAN B POSTCHECK"))
         .replaceAll("tkc_hotel_dev", config.database);
       await connection.query(planB);
+      const facilityMigration = await readFile(
+        path.join(REPOSITORY_ROOT, "database", "migrations", "2026-11-17-facility-tour-booking.sql"),
+        "utf8"
+      );
+      await connection.query(facilityMigration.replaceAll("tkc_hotel_dev", config.database));
       const migrated = await schemaSignature(connection);
 
       await resetTestDatabase(config);
@@ -142,9 +147,67 @@ test("real MySQL legacy preflight and deterministic reset", async (context) => {
     tables: 19,
     roomTypes: 4,
     rooms: 800,
-    services: 5
+    services: 7
   });
+
+  const verificationConnection = await mysql.createConnection(config);
+  try {
+    const [roundTimeColumn] = await verificationConnection.query(`
+      SELECT column_type AS columnType, is_nullable AS nullable
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'ServiceUsage'
+        AND column_name = 'start_time'
+    `);
+    assert.deepEqual(roundTimeColumn, [{ columnType: "time", nullable: "YES" }]);
+
+    const [catalog] = await verificationConnection.query(`
+      SELECT name, service_kind AS serviceKind, charge_unit AS chargeUnit,
+             CAST(default_rate AS CHAR) AS defaultRate, schedule_json AS schedule
+      FROM Service
+      WHERE name IN ('ฟิตเนส', 'ซาวน่า', 'เที่ยวตลาดกลางคืน',
+                     'ชมพระอาทิตย์ตก - เกาะสวรรค์', 'ชมพระอาทิตย์ตก - ริมชายหาด')
+      ORDER BY service_id
+    `);
+    assert.deepEqual(catalog.map((row) => ({ ...row, schedule: jsonValue(row.schedule) })), [
+    {
+      name: "ฟิตเนส", serviceKind: "FITNESS", chargeUnit: "PER_PERSON_PER_ROUND",
+      defaultRate: "500.00",
+      schedule: { times: ["07:00", "09:00", "12:00", "15:00", "18:00", "20:30"], capacity: 40 }
+    },
+    {
+      name: "ซาวน่า", serviceKind: "SAUNA", chargeUnit: "PER_PERSON_PER_ROUND",
+      defaultRate: "300.00",
+      schedule: { times: ["07:00", "12:00", "17:30", "18:30", "19:30", "20:30"] }
+    },
+    {
+      name: "เที่ยวตลาดกลางคืน", serviceKind: "TOUR", chargeUnit: "PER_PERSON_PER_ROUND",
+      defaultRate: "0.00",
+      schedule: { location: "ตลาดกลางคืน", times: ["19:30", "20:00", "20:30"], capacity: 10 }
+    },
+    {
+      name: "ชมพระอาทิตย์ตก - เกาะสวรรค์", serviceKind: "TOUR", chargeUnit: "PER_PERSON_PER_ROUND",
+      defaultRate: "0.00",
+      schedule: { location: "เกาะสวรรค์", times: sunsetTimes(), capacity: 10 }
+    },
+    {
+      name: "ชมพระอาทิตย์ตก - ริมชายหาด", serviceKind: "TOUR", chargeUnit: "PER_PERSON_PER_ROUND",
+      defaultRate: "0.00",
+      schedule: { location: "ริมชายหาด", times: sunsetTimes(), capacity: 10 }
+    }
+    ]);
+  } finally {
+    await verificationConnection.end();
+  }
 });
+
+function sunsetTimes() {
+  return ["15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30"];
+}
+
+function jsonValue(value) {
+  return typeof value === "string" ? JSON.parse(value) : value;
+}
 
 async function resetLegacyFixture(connection) {
   const [tables] = await connection.query(`

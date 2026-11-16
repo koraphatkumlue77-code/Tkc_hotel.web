@@ -501,6 +501,7 @@ CREATE TABLE `ServiceUsage` (
   `booking_service_id` int NOT NULL,
   `booking_room_id` int NOT NULL,
   `usage_date` date DEFAULT NULL,
+  `start_time` time DEFAULT NULL,
   `unit_price_snapshot` decimal(12,2) NOT NULL,
   `quantity` int NOT NULL DEFAULT '1',
   `status` varchar(30) NOT NULL DEFAULT 'ACTIVE',

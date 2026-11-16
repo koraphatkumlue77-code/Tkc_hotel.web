@@ -28,10 +28,10 @@ test("test reset fails unless the canonical seed inventory is complete", () => {
     tables: 19,
     roomTypes: 4,
     rooms: 800,
-    services: 5
+    services: 7
   }));
   assert.throws(
-    () => validateResetResult({ tables: 18, roomTypes: 4, rooms: 800, services: 5 }),
+    () => validateResetResult({ tables: 18, roomTypes: 4, rooms: 800, services: 7 }),
     /Unexpected test database inventory/
   );
 });

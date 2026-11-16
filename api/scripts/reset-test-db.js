@@ -88,7 +88,7 @@ export async function resetTestDatabase(config = configFromEnvironment()) {
 }
 
 export function validateResetResult(result) {
-  const expected = { tables: 19, roomTypes: 4, rooms: 800, services: 5 };
+  const expected = { tables: 19, roomTypes: 4, rooms: 800, services: 7 };
   const matches = Object.entries(expected)
     .every(([key, value]) => result[key] === value);
   if (!matches) {
