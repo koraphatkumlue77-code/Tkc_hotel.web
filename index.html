@@ -145,7 +145,7 @@
         <div class="facility-header">
           <p class="eyebrow">FACILITIES & EXPERIENCES</p>
           <h2>เติมเต็มทุกช่วงเวลาของคุณ</h2>
-          <p>จองบริการภายในโรงแรมและทริปท่องเที่ยวได้โดยตรง บริการทริปเปิดให้เริ่มจองตั้งแต่เวลา 18:00 น.</p>
+          <p>จองบริการภายในโรงแรมและทริปท่องเที่ยวได้โดยตรง ทริปทั้งหมดไม่มีค่าใช้จ่ายและเลือกจำนวนคนได้</p>
         </div>
 
         <div class="facility-grid">
@@ -1168,9 +1168,18 @@
         <select name="booking_room" id="facility-booking-room" required></select>
       </label>
       <label class="login-input-group">วันที่ต้องการจอง<input name="date" type="date" id="facility-date" required></label>
+      <label class="login-input-group" id="facility-location-field" hidden>สถานที่
+        <select name="location" id="facility-location"></select>
+      </label>
       <div class="staff-form-columns">
         <label class="login-input-group">รอบเวลา<select name="time" id="facility-time" required></select></label>
-        <label class="login-input-group">จำนวนคน<input name="guests" type="number" min="1" value="1" required></label>
+        <label class="login-input-group">จำนวนคน
+          <span class="facility-quantity-control">
+            <button type="button" id="facility-guest-decrease" aria-label="ลดจำนวนคน">−</button>
+            <input name="guests" id="facility-guests" type="number" min="1" value="1" required inputmode="numeric" aria-live="polite">
+            <button type="button" id="facility-guest-increase" aria-label="เพิ่มจำนวนคน">+</button>
+          </span>
+        </label>
       </div>
       <p class="demo-note" id="facility-status" role="status">ข้อมูลบริการและรอบเวลาจะโหลดจากฐานข้อมูล</p>
       <button type="submit" class="submit-login-btn">ตรวจรายละเอียด</button>
@@ -1179,9 +1188,11 @@
       <h3>ตรวจรายละเอียดก่อนยืนยัน</h3>
       <dl class="booking-amounts">
         <div><dt>บริการ</dt><dd data-facility-review="service"></dd></div>
+        <div id="facility-review-location-row" hidden><dt>สถานที่</dt><dd data-facility-review="location"></dd></div>
         <div><dt>วันที่</dt><dd data-facility-review="date"></dd></div>
         <div><dt>เวลา</dt><dd data-facility-review="time"></dd></div>
         <div><dt>จำนวนคน</dt><dd data-facility-review="guests"></dd></div>
+        <div><dt>ยอดรวม</dt><dd id="facility-total"></dd></div>
       </dl>
       <div class="staff-actions">
         <button type="button" id="edit-facility" class="booking-outline">กลับไปแก้ไข</button>

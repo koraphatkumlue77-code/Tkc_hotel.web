@@ -742,6 +742,15 @@ function renderMyBookings(bookings) {
         <button type="submit" class="btn-dark-pill">${retryEvent ? 'ส่งตรวจอีกครั้ง' : 'ส่งหลักฐานให้บัญชีตรวจ'}</button>
         <p class="demo-note" role="status"></p>
       </form>` : '';
+    const extras = [
+      ...(booking.services || []).filter(item => item.status === 'SELECTED').map(item =>
+        `<li><strong>${escapeHtml(item.name)}</strong> · ${item.quantity} คน · ${String(item.startTime || '').slice(0, 5)} น. · ${money(Number(item.amount))} บาท</li>`),
+      ...(booking.tours || []).map(item =>
+        `<li><strong>${escapeHtml(item.name)}</strong> · ${item.quantity} คน · ${escapeHtml(item.location || '')} · ${String(item.startTime).slice(0, 5)} น. · ฟรี</li>`)
+    ];
+    const extrasBlock = extras.length
+      ? `<div class="booking-extras"><strong>บริการและทริปที่จอง</strong><ul>${extras.join('')}</ul></div>`
+      : '';
     return `
       <article class="customer-booking-card">
         <div class="customer-booking-heading">
@@ -750,6 +759,7 @@ function renderMyBookings(bookings) {
         </div>
         <p>${bookingDate.format(parseDate(checkIn))} – ${bookingDate.format(parseDate(checkOut))}</p>
         <ul>${booking.rooms.map(room => `<li>${escapeHtml(room.roomTypeName)} · ${room.guestCount} คน</li>`).join('')}</ul>
+        ${extrasBlock}
         ${hold}
         <dl class="booking-amounts">
           <div><dt>ยอดรวมจากระบบ</dt><dd>${money(Number(booking.total))} บาท</dd></div>
@@ -1072,54 +1082,133 @@ let activeFacilityBtn = null;
 let activeFacilityContext = null;
 const facilityForm = $('#facility-form');
 const facilityReview = $('#facility-review');
-const facilityRounds = {
-  fitness: ['07:00', '09:00', '12:00', '15:00', '18:00', '20:30'],
-  sauna: ['07:00', '12:00', '17:30', '18:30', '19:30', '20:30'],
-  sunset: ['18:00'],
-  market: ['18:00', '19:00']
-};
+const facilityLocationField = $('#facility-location-field');
+const facilityLocation = $('#facility-location');
+const facilityGuests = $('#facility-guests');
+const tourFacilityKinds = new Set(['sunset', 'market']);
 
 async function facilityBookingOptions(kind) {
   const { data } = await apiFetch('/api/bookings/mine?limit=50');
   const details = await Promise.all(data.map(item => apiFetch(`/api/bookings/${item.id}`).then(result => result.data)));
-  const allowed = kind === 'market'
+  const allowed = tourFacilityKinds.has(kind)
     ? ['PENDING_PAYMENT', 'PAYMENT_REVIEW', 'CONFIRMED', 'LATE_ARRIVAL', 'CHECKED_IN']
-    : ['CONFIRMED', 'LATE_ARRIVAL'];
-  return details.filter(booking => allowed.includes(booking.status)).flatMap(booking =>
+    : ['PENDING_PAYMENT', 'CONFIRMED', 'LATE_ARRIVAL'];
+  return details.filter(booking => allowed.includes(booking.effectiveStatus || booking.status)).flatMap(booking =>
     booking.rooms.map(room => ({
       value: `${booking.id}:${room.id}`,
       label: `${booking.bookingCode} · ${room.roomTypeName}`,
       bookingId: booking.id,
       bookingRoomId: room.id,
+      guestCount: Number(room.guestCount),
       checkIn: String(booking.checkIn).slice(0, 10),
       checkOut: String(booking.checkOut).slice(0, 10)
     }))
   );
 }
 
-async function loadTourRounds() {
-  if (activeFacilityContext?.kind !== 'market' || !facilityForm.elements.date.value) return;
-  const date = facilityForm.elements.date.value;
-  const { data } = await apiFetch(`/api/tours/rounds?from=${date}&to=${date}`);
-  facilityForm.elements.time.replaceChildren(
-    new Option('เลือกรอบเวลา', ''),
-    ...data.filter(round => round.remainingSeats > 0).map(round =>
-      new Option(`${String(round.startTime).slice(0, 5)} น. · เหลือ ${round.remainingSeats} ที่`, String(round.id))
-    )
-  );
-  $('#facility-status').textContent = data.length ? 'เลือกรอบที่ยังมีที่ว่าง' : 'ยังไม่มีรอบทัวร์ในวันที่เลือก';
+function currentFacilityBooking() {
+  return activeFacilityContext?.bookings.find(item => item.value === facilityForm.elements.booking_room.value);
 }
 
-facilityForm.elements.booking_room.addEventListener('change', () => {
-  const selected = activeFacilityContext?.bookings.find(item => item.value === facilityForm.elements.booking_room.value);
+function currentFacilityRound() {
+  return activeFacilityContext?.rounds?.find(item => String(item.id || item.startTime) === facilityForm.elements.time.value);
+}
+
+function facilityRoundRemaining(round) {
+  if (!round) return 0;
+  const value = tourFacilityKinds.has(activeFacilityContext.kind) ? round.remainingSeats : round.remaining;
+  return value == null ? Number.MAX_SAFE_INTEGER : Number(value);
+}
+
+function facilityLocationName(round) {
+  if (!round) return '';
+  if (!tourFacilityKinds.has(activeFacilityContext.kind)) return '';
+  if (activeFacilityContext.kind === 'market') return 'ตลาดกลางคืน';
+  return round.name.replace(/^ชมพระอาทิตย์ตก\s*-\s*/, '');
+}
+
+function updateFacilityQuantity() {
+  const booking = currentFacilityBooking();
+  const round = currentFacilityRound();
+  const maximum = Math.max(1, Math.min(booking?.guestCount || 1, facilityRoundRemaining(round)));
+  facilityGuests.max = String(maximum);
+  facilityGuests.value = String(Math.min(maximum, Math.max(1, Number(facilityGuests.value) || 1)));
+  $('#facility-guest-decrease').disabled = Number(facilityGuests.value) <= 1;
+  $('#facility-guest-increase').disabled = Number(facilityGuests.value) >= maximum;
+  const quantity = Number(facilityGuests.value);
+  const total = tourFacilityKinds.has(activeFacilityContext?.kind)
+    ? 'ฟรี'
+    : `${money(Number(activeFacilityContext?.service?.defaultRate || 0) * quantity)} บาท`;
+  $('#facility-status').textContent = round
+    ? `${tourFacilityKinds.has(activeFacilityContext.kind) ? 'ทริปฟรี' : `ราคา ${money(Number(activeFacilityContext.service.defaultRate))} บาท/คน`} · เลือกได้สูงสุด ${maximum} คน · รวม ${total}`
+    : 'ยังไม่มีรอบที่ว่างในวันที่เลือก';
+}
+
+function renderFacilityTimes() {
+  const rounds = tourFacilityKinds.has(activeFacilityContext.kind)
+    ? activeFacilityContext.rounds.filter(round => String(round.serviceId) === facilityLocation.value)
+    : activeFacilityContext.rounds;
+  const options = rounds.filter(round => facilityRoundRemaining(round) > 0).map(round => {
+    const value = String(round.id || round.startTime);
+    const remaining = facilityRoundRemaining(round);
+    const suffix = remaining === Number.MAX_SAFE_INTEGER ? '' : ` · เหลือ ${remaining} ที่`;
+    return new Option(`${String(round.startTime).slice(0, 5)} น.${suffix}`, value);
+  });
+  facilityForm.elements.time.replaceChildren(
+    new Option(options.length ? 'เลือกรอบเวลา' : 'ไม่มีรอบว่าง', ''), ...options
+  );
+  facilityForm.elements.time.value = options[0]?.value || '';
+  updateFacilityQuantity();
+}
+
+async function loadFacilityAvailability() {
+  if (!activeFacilityContext || !facilityForm.elements.date.value || !currentFacilityBooking()) return;
+  const date = facilityForm.elements.date.value;
+  $('#facility-status').textContent = 'กำลังตรวจสอบที่ว่าง...';
+  if (tourFacilityKinds.has(activeFacilityContext.kind)) {
+    const { data } = await apiFetch(`/api/tours/rounds?from=${date}&to=${date}`);
+    activeFacilityContext.rounds = data.filter(round => activeFacilityContext.kind === 'sunset'
+      ? /ชมพระอาทิตย์ตก/.test(round.name)
+      : /ตลาดกลางคืน/.test(round.name));
+    const locations = Array.from(new Map(activeFacilityContext.rounds.map(round => [String(round.serviceId), facilityLocationName(round)])).entries());
+    facilityLocationField.hidden = false;
+    facilityLocation.replaceChildren(...locations.map(([value, label]) => new Option(label, value)));
+  } else {
+    const selected = currentFacilityBooking();
+    const { data } = await apiFetch(`/api/services/${activeFacilityContext.service.id}/rounds?date=${date}&bookingRoomId=${selected.bookingRoomId}`);
+    activeFacilityContext.rounds = data;
+    facilityLocationField.hidden = true;
+    facilityLocation.replaceChildren(new Option('', ''));
+  }
+  renderFacilityTimes();
+}
+
+async function syncFacilityBookingSelection() {
+  const selected = currentFacilityBooking();
   if (!selected) return;
   facilityForm.elements.date.min = selected.checkIn;
   facilityForm.elements.date.max = shiftDay(selected.checkOut, -1);
   facilityForm.elements.date.value = selected.checkIn;
-  loadTourRounds().catch(error => { $('#facility-status').textContent = error.message; });
+  facilityGuests.value = '1';
+  await loadFacilityAvailability();
+}
+
+facilityForm.elements.booking_room.addEventListener('change', () => {
+  syncFacilityBookingSelection().catch(error => { $('#facility-status').textContent = error.message; });
 });
 facilityForm.elements.date.addEventListener('change', () => {
-  loadTourRounds().catch(error => { $('#facility-status').textContent = error.message; });
+  loadFacilityAvailability().catch(error => { $('#facility-status').textContent = error.message; });
+});
+facilityLocation.addEventListener('change', renderFacilityTimes);
+facilityForm.elements.time.addEventListener('change', updateFacilityQuantity);
+facilityGuests.addEventListener('input', updateFacilityQuantity);
+$('#facility-guest-decrease').addEventListener('click', () => {
+  facilityGuests.value = String(Math.max(1, Number(facilityGuests.value) - 1));
+  updateFacilityQuantity();
+});
+$('#facility-guest-increase').addEventListener('click', () => {
+  facilityGuests.value = String(Math.min(Number(facilityGuests.max), Number(facilityGuests.value) + 1));
+  updateFacilityQuantity();
 });
 
 document.querySelectorAll('[data-facility]').forEach(button => {
@@ -1128,14 +1217,6 @@ document.querySelectorAll('[data-facility]').forEach(button => {
       pendingRoom = null;
       toast('กรุณาเข้าสู่ระบบลูกค้าก่อนจองบริการ');
       $('[data-login="ลูกค้า"]')?.click();
-      return;
-    }
-    if (button.dataset.facility === 'sunset') {
-      try {
-        const { data } = await apiFetch('/api/attractions');
-        const attraction = data.find(item => /sunset|พระอาทิตย์ตก/i.test(`${item.name} ${item.description || ''}`));
-        toast(attraction ? `${attraction.name}: ${attraction.description || 'ดูข้อมูลสถานที่ได้ที่โรงแรม'}` : 'ยังไม่มีข้อมูลสถานที่ชมพระอาทิตย์ตก');
-      } catch (error) { toast(error.message); }
       return;
     }
     activeFacilityBtn = button;
@@ -1149,9 +1230,9 @@ document.querySelectorAll('[data-facility]').forEach(button => {
       const bookings = await facilityBookingOptions(kind);
       if (!bookings.length) throw new Error('ไม่พบใบจองที่สามารถเพิ่มบริการนี้ได้');
       activeFacilityContext = { kind, bookings };
-      facilityForm.elements.guests.value = '1';
-      facilityForm.elements.guests.max = '1';
-      if (kind !== 'market') {
+      activeFacilityContext.rounds = [];
+      facilityGuests.value = '1';
+      if (!tourFacilityKinds.has(kind)) {
         const { data: services } = await apiFetch('/api/services');
         const serviceKind = kind === 'fitness' ? 'FITNESS' : 'SAUNA';
         const service = services.find(item => item.serviceKind === serviceKind);
@@ -1159,11 +1240,7 @@ document.querySelectorAll('[data-facility]').forEach(button => {
         activeFacilityContext.service = service;
       }
       facilityForm.elements.booking_room.replaceChildren(...bookings.map(item => new Option(item.label, item.value)));
-      facilityForm.elements.booking_room.dispatchEvent(new Event('change'));
-      if (kind !== 'market') {
-        facilityForm.elements.time.replaceChildren(...facilityRounds[kind].map(time => new Option(`${time} น.`, time)));
-        $('#facility-status').textContent = `ราคา ${money(Number(activeFacilityContext.service.defaultRate))} บาทต่อห้อง`;
-      }
+      await syncFacilityBookingSelection();
       $('#facility-dialog').showModal();
     } catch (error) { toast(error.message); }
   });
@@ -1174,11 +1251,18 @@ facilityForm.addEventListener('submit', event => {
   const selected = new FormData(facilityForm);
   facilityReview.querySelector('[data-facility-review="service"]').textContent =
     activeFacilityBtn.closest('.facility-card').querySelector('h3').textContent;
+  const round = currentFacilityRound();
+  const locationRow = $('#facility-review-location-row');
+  locationRow.hidden = !tourFacilityKinds.has(activeFacilityContext.kind);
+  facilityReview.querySelector('[data-facility-review="location"]').textContent = facilityLocationName(round);
   facilityReview.querySelector('[data-facility-review="date"]').textContent =
     bookingDate.format(parseDate(selected.get('date')));
   facilityReview.querySelector('[data-facility-review="time"]').textContent =
     facilityForm.elements.time.selectedOptions[0]?.textContent || `${selected.get('time')} น.`;
   facilityReview.querySelector('[data-facility-review="guests"]').textContent = `${selected.get('guests')} คน`;
+  $('#facility-total').textContent = tourFacilityKinds.has(activeFacilityContext.kind)
+    ? 'ฟรี'
+    : `${money(Number(activeFacilityContext.service.defaultRate) * Number(selected.get('guests')))} บาท`;
   facilityForm.hidden = true;
   facilityReview.hidden = false;
   $('#edit-facility').focus();
@@ -1195,18 +1279,15 @@ $('#confirm-facility').addEventListener('click', async event => {
   if (!selected) return;
   event.currentTarget.disabled = true;
   try {
-    if (activeFacilityContext.kind === 'market') {
-      const guests = Number(facilityForm.elements.guests.value);
-      for (let index = 1; index <= guests; index += 1) {
-        await apiFetch(`/api/bookings/${selected.bookingId}/tours`, {
-          method: 'POST',
-          body: JSON.stringify({
-            tourRoundId: Number(facilityForm.elements.time.value),
-            participantCode: `WEB-${selected.bookingId}-${Date.now()}-${index}`,
-            participantName: `ผู้เข้าร่วม ${index}`
-          })
-        });
-      }
+    if (tourFacilityKinds.has(activeFacilityContext.kind)) {
+      await apiFetch(`/api/bookings/${selected.bookingId}/tours/party`, {
+        method: 'POST',
+        body: JSON.stringify({
+          tourRoundId: Number(facilityForm.elements.time.value),
+          bookingRoomId: selected.bookingRoomId,
+          quantity: Number(facilityForm.elements.guests.value)
+        })
+      });
     } else {
       await apiFetch(`/api/bookings/${selected.bookingId}/services`, {
         method: 'POST',
@@ -1214,16 +1295,22 @@ $('#confirm-facility').addEventListener('click', async event => {
           serviceId: activeFacilityContext.service.id,
           bookingRoomId: selected.bookingRoomId,
           usageDate: facilityForm.elements.date.value,
-          quantity: 1
+          startTime: facilityForm.elements.time.value,
+          quantity: Number(facilityForm.elements.guests.value)
         })
       });
     }
     activeFacilityBtn.classList.add('booked');
     activeFacilityBtn.textContent = 'จองแล้ว';
     $('#facility-dialog').close();
-    toast('บันทึกการจองบริการลงฐานข้อมูลแล้ว');
+    toast(tourFacilityKinds.has(activeFacilityContext.kind)
+      ? 'จองทริปฟรีเรียบร้อยแล้ว'
+      : 'บันทึกบริการเสริมและยอดชำระแล้ว');
   } catch (error) {
+    facilityReview.hidden = true;
+    facilityForm.hidden = false;
     $('#facility-status').textContent = error.message;
+    facilityForm.elements.time.focus();
   } finally { event.currentTarget.disabled = false; }
 });
 

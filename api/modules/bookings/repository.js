@@ -343,7 +343,9 @@ export class BookingsRepository {
         SELECT bs.booking_service_id AS id, bs.service_id AS serviceId,
                s.name, s.service_kind AS serviceKind, bs.status,
                su.booking_room_id AS bookingRoomId, su.usage_date AS usageDate,
-               CAST(su.unit_price_snapshot AS CHAR) AS unitPrice, su.quantity
+               TIME_FORMAT(su.start_time, '%H:%i:%s') AS startTime,
+               CAST(su.unit_price_snapshot AS CHAR) AS unitPrice, su.quantity,
+               CAST(su.unit_price_snapshot * su.quantity AS CHAR) AS amount
         FROM BookingService bs
         JOIN Service s ON s.service_id = bs.service_id
         LEFT JOIN ServiceUsage su ON su.booking_service_id = bs.booking_service_id

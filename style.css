@@ -1823,6 +1823,35 @@ blockquote { margin: 0; border: 1px solid #ffffff25; border-radius: 18px; paddin
 .booking-choices { min-width: 0; padding: 7px 10px; border: 1px solid #cbd4e2; border-radius: 10px; }
 .booking-choices legend { padding: 0 4px; font-size: 13px; font-weight: 700; }
 .booking-choices label { display: inline-flex; align-items: center; gap: 5px; margin: 3px 10px 3px 0; }
+.facility-quantity-control {
+  display: grid;
+  grid-template-columns: 42px minmax(56px, 1fr) 42px;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid #cbd4e2;
+  border-radius: 12px;
+  background: white;
+}
+.facility-quantity-control button {
+  min-height: 42px;
+  background: #eef2f6;
+  color: #082344;
+  font-size: 20px;
+  font-weight: 800;
+}
+.facility-quantity-control button:hover,
+.facility-quantity-control button:focus-visible { background: #dce5ed; outline: 2px solid #56708e; outline-offset: -2px; }
+.facility-quantity-control button:disabled { color: #9aa7b6; cursor: not-allowed; }
+.facility-quantity-control input {
+  min-width: 0;
+  border: 0;
+  border-inline: 1px solid #d6dde6;
+  border-radius: 0;
+  text-align: center;
+  font-weight: 800;
+  appearance: textfield;
+}
+.facility-quantity-control input::-webkit-inner-spin-button { appearance: none; }
 .booking-amounts { margin: 0; }
 .booking-amounts div { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; }
 .booking-amounts div:last-child { border-top: 1px solid #d4dbe6; font-weight: 800; }
@@ -1836,6 +1865,9 @@ blockquote { margin: 0; border: 1px solid #ffffff25; border-radius: 18px; paddin
 .customer-booking-card { margin: 10px 0; padding: 14px; background: #e7ebf3; border-radius: 14px; }
 .customer-booking-heading { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
 .customer-booking-card ul { padding-left: 20px; margin: 6px 0; }
+.booking-extras { margin: 10px 0; padding: 10px 12px; border-left: 3px solid #56708e; background: #f5f7fa; border-radius: 0 10px 10px 0; }
+.booking-extras > strong { font-size: 13px; }
+.booking-extras li { margin-top: 4px; color: #34485f; font-size: 12px; }
 
 @media (max-width: 600px) {
   .header-actions:has(#my-bookings-button:not([hidden])) { flex-wrap: wrap; justify-content: flex-end; }

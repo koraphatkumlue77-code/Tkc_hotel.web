@@ -106,10 +106,20 @@ test("facility booking uses persistent service, attraction, and tour APIs", asyn
     readFile(path.join(root, "script.js"), "utf8"),
     readFile(path.join(root, "index.html"), "utf8")
   ]);
-  for (const route of ["/api/services", "/api/attractions", "/api/tours/rounds", "/tours", "/services"]) {
+  for (const route of ["/api/services", "/api/tours/rounds", "/tours", "/services"]) {
     assert.ok(source.includes(route), route);
   }
   assert.match(html, /id="facility-booking-room"/);
+  for (const id of [
+    "facility-location", "facility-guest-decrease", "facility-guests",
+    "facility-guest-increase", "facility-total"
+  ]) assert.match(html, new RegExp(`id="${id}"`), id);
+  assert.match(source, /\/api\/services\/\$\{[^}]+\}\/rounds/);
+  assert.ok(source.includes("/tours/party"));
+  assert.match(source, /startTime:\s*facilityForm\.elements\.time\.value/);
+  assert.match(source, /quantity:\s*Number\(facilityForm\.elements\.guests\.value\)/);
+  assert.match(source, /\?\s*'ฟรี'/);
+  assert.doesNotMatch(source, /button\.dataset\.facility === 'sunset'[\s\S]{0,300}\/api\/attractions/);
   assert.doesNotMatch(source, /ยกเลิกการจองบริการทดลองแล้ว/);
   assert.doesNotMatch(source, /ยืนยันการจองบริการทดลองแล้ว/);
   assert.ok(source.includes("/api/staff/promotions"));

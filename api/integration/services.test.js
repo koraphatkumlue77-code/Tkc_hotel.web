@@ -86,6 +86,11 @@ test("customer books per-person facility rounds with live hold, guest, schedule,
     assert.equal(added.body.data.quantity, 2);
     assert.equal(added.body.data.startTime, "07:00:00");
     assert.equal(added.body.data.amount, "1000.00");
+    const detail = await fixture.get(owner.cookie, `/api/bookings/${booking.id}`);
+    assert.deepEqual(
+      detail.body.data.services.map(({ startTime, quantity, amount }) => ({ startTime, quantity, amount })),
+      [{ startTime: "07:00:00", quantity: 2, amount: "1000.00" }]
+    );
 
     const tooMany = await fixture.post(owner.cookie, `/api/bookings/${booking.id}/services`, {
       serviceId: 4, bookingRoomId: booking.bookingRoomId, usageDate: booking.checkIn,
