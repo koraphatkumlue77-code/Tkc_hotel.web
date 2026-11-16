@@ -5,13 +5,14 @@ import { serviceSelection, staffServiceSelection } from "../modules/services/con
 
 test("service contracts normalize customer and post-Check-in selections", () => {
   assert.deepEqual(serviceSelection({
-    serviceId: 3, bookingRoomId: 8, quantity: 2, usageDate: "2037-04-10"
-  }), { serviceId: 3, bookingRoomId: 8, quantity: 2, usageDate: "2037-04-10" });
+    serviceId: 3, bookingRoomId: 8, quantity: 2, usageDate: "2037-04-10", startTime: "07:00"
+  }), { serviceId: 3, bookingRoomId: 8, quantity: 2, usageDate: "2037-04-10", startTime: "07:00:00" });
   assert.deepEqual(staffServiceSelection({
     serviceId: 4,
     bookingRoomId: 8,
     quantity: 1,
     usageDate: null,
+    startTime: "18:30:00",
     method: " cash ",
     idempotencyKey: " svc-001 "
   }), {
@@ -19,6 +20,7 @@ test("service contracts normalize customer and post-Check-in selections", () => 
     bookingRoomId: 8,
     quantity: 1,
     usageDate: null,
+    startTime: "18:30:00",
     method: "CASH",
     idempotencyKey: "SVC-001"
   });
@@ -29,9 +31,11 @@ test("service contracts reject invalid IDs, dates, quantities, methods, and keys
     { serviceId: "3", bookingRoomId: 8, quantity: 1 },
     { serviceId: 3, bookingRoomId: 0, quantity: 1 },
     { serviceId: 3, bookingRoomId: 8, quantity: 0 },
-    { serviceId: 3, bookingRoomId: 8, quantity: 1, usageDate: "2037-02-30" }
+    { serviceId: 3, bookingRoomId: 8, quantity: 1, usageDate: "2037-02-30", startTime: "07:00" },
+    { serviceId: 3, bookingRoomId: 8, quantity: 1, usageDate: "2037-04-10" },
+    { serviceId: 3, bookingRoomId: 8, quantity: 1, usageDate: "2037-04-10", startTime: "25:00" }
   ]) assert.throws(() => serviceSelection(body), (error) => error.status === 400);
   assert.throws(() => staffServiceSelection({
-    serviceId: 3, bookingRoomId: 8, quantity: 1, method: "crypto", idempotencyKey: "bad key"
+    serviceId: 3, bookingRoomId: 8, quantity: 1, startTime: "07:00", method: "crypto", idempotencyKey: "bad key"
   }), (error) => error.status === 400);
 });

@@ -11,6 +11,10 @@ export function createServicesModule({ pool, authenticate }) {
   router.get("/services", asyncHandler(async (_request, response) => {
     response.json({ data: await service.list() });
   }));
+  router.get("/services/:serviceId/rounds", authenticate, requireRoles("customer"),
+    asyncHandler(async (request, response) => {
+      response.json({ data: await service.listRounds(request.params.serviceId, request.query, request.principal) });
+    }));
   router.post("/bookings/:bookingId/services", authenticate, requireRoles("customer"),
     asyncHandler(async (request, response) => {
       response.status(201).json({ data: await service.addMine(request.params.bookingId, request.body, request.principal) });
