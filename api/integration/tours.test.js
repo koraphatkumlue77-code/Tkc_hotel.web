@@ -11,7 +11,7 @@ import { configFromEnvironment, resetTestDatabase } from "../scripts/reset-test-
 const API_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 loadEnvironment({ path: path.join(API_ROOT, ".env.test") });
 
-test("tour pricing sequences daily participant uses and cancellation releases totals", async () => {
+test("single tour reservations are free and cancellation leaves booking totals unchanged", async () => {
   const fixture = await createFixture();
   try {
     const manager = await fixture.employee("tour.manager@example.test", "MANAGEMENT");
@@ -28,10 +28,10 @@ test("tour pricing sequences daily participant uses and cancellation releases to
     });
     assert.equal(first.response.status, 201);
     assert.equal(first.body.data.usageSequenceForDay, 1);
-    assert.equal(first.body.data.unitPrice, "50.00");
+    assert.equal(first.body.data.unitPrice, "0.00");
     assert.equal(second.response.status, 201);
     assert.equal(second.body.data.usageSequenceForDay, 2);
-    assert.equal(second.body.data.unitPrice, "100.00");
+    assert.equal(second.body.data.unitPrice, "0.00");
     const cancelled = await fixture.post(customer.cookie,
       `/api/bookings/${booking.id}/tours/${second.body.data.id}/cancel`, {});
     assert.equal(cancelled.response.status, 200);
@@ -39,11 +39,88 @@ test("tour pricing sequences daily participant uses and cancellation releases to
       "SELECT CAST(service_subtotal_snapshot AS CHAR) AS services, CAST(total_snapshot AS CHAR) AS total FROM Booking WHERE booking_id = ?",
       [booking.id]
     );
-    assert.deepEqual(stored, { services: "50.00", total: "1050.00" });
+    assert.deepEqual(stored, { services: "0.00", total: "1000.00" });
     const listResponse = await fetch(`${fixture.baseUrl}/api/tours/rounds?from=${date}&to=${date}`);
     const list = await listResponse.json();
     assert.equal(listResponse.status, 200);
     assert.equal(list.data.find(({ id }) => id === secondRound.id).remainingSeats, 10);
+  } finally { await fixture.close(); }
+});
+
+test("fixed free schedules materialize and a customer books an atomic tour party", async () => {
+  const fixture = await createFixture();
+  try {
+    const customer = await fixture.customer("tour.party@example.test", "TOUR-PARTY");
+    const date = addDays(bangkokDate(), 2);
+    const booking = await fixture.booking(customer.id, date, addDays(date, 2), 3);
+    const listed = await fixture.get(`/api/tours/rounds?from=${date}&to=${date}`);
+    assert.equal(listed.response.status, 200);
+    assert.equal(listed.body.data.length, 17);
+    const grouped = Object.groupBy(listed.body.data, (round) => round.name);
+    assert.deepEqual(Object.keys(grouped).sort(), [
+      "ชมพระอาทิตย์ตก - ริมชายหาด",
+      "ชมพระอาทิตย์ตก - เกาะสวรรค์",
+      "เที่ยวตลาดกลางคืน"
+    ].sort());
+    assert.deepEqual(grouped["ชมพระอาทิตย์ตก - เกาะสวรรค์"].map((round) => round.startTime.slice(0, 5)),
+      ["15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30"]);
+    assert.deepEqual(grouped["เที่ยวตลาดกลางคืน"].map((round) => round.startTime.slice(0, 5)),
+      ["19:30", "20:00", "20:30"]);
+    assert.ok(listed.body.data.every((round) => round.baseRate === "0.00"
+      && round.capacity === 10 && round.remainingSeats === 10));
+
+    const round = grouped["ชมพระอาทิตย์ตก - เกาะสวรรค์"][0];
+    const party = await fixture.post(customer.cookie, `/api/bookings/${booking.id}/tours/party`, {
+      tourRoundId: round.id, bookingRoomId: booking.bookingRoomId, quantity: 2
+    });
+    assert.equal(party.response.status, 201);
+    assert.equal(party.body.data.quantity, 2);
+    assert.equal(party.body.data.amount, "0.00");
+    assert.equal(party.body.data.reservations.length, 2);
+
+    const detail = await fixture.get(`/api/bookings/${booking.id}`, customer.cookie);
+    assert.equal(detail.response.status, 200);
+    assert.deepEqual(detail.body.data.tours.map(({ name, quantity, amount }) => ({ name, quantity, amount })), [
+      { name: "ชมพระอาทิตย์ตก - เกาะสวรรค์", quantity: 2, amount: "0.00" }
+    ]);
+    const [[stored]] = await fixture.pool.execute(`
+      SELECT CAST(service_subtotal_snapshot AS CHAR) AS services,
+             CAST(total_snapshot AS CHAR) AS total,
+             (SELECT COUNT(*) FROM Payment WHERE booking_id = ?) AS payments
+      FROM Booking WHERE booking_id = ?
+    `, [booking.id, booking.id]);
+    assert.deepEqual({ ...stored, payments: Number(stored.payments) },
+      { services: "0.00", total: "1000.00", payments: 0 });
+
+    const after = await fixture.get(`/api/tours/rounds?from=${date}&to=${date}`);
+    assert.equal(after.body.data.find(({ id }) => id === round.id).remainingSeats, 8);
+
+    const tooMany = await fixture.post(customer.cookie, `/api/bookings/${booking.id}/tours/party`, {
+      tourRoundId: grouped["ชมพระอาทิตย์ตก - ริมชายหาด"][0].id,
+      bookingRoomId: booking.bookingRoomId, quantity: 4
+    });
+    assert.equal(tooMany.response.status, 400);
+    assert.equal(tooMany.body.code, "TOUR_PARTY_TOO_LARGE");
+  } finally { await fixture.close(); }
+});
+
+test("party capacity failure inserts no partial tour reservations", async () => {
+  const fixture = await createFixture();
+  try {
+    const manager = await fixture.employee("tour.atomic.manager@example.test", "MANAGEMENT");
+    const customer = await fixture.customer("tour.atomic@example.test", "TOUR-ATOMIC");
+    const date = addDays(bangkokDate(), 4);
+    const booking = await fixture.booking(customer.id, date, addDays(date, 1), 3);
+    const round = await fixture.createRound(manager.cookie, date, "14:00", 2);
+    const result = await fixture.post(customer.cookie, `/api/bookings/${booking.id}/tours/party`, {
+      tourRoundId: round.id, bookingRoomId: booking.bookingRoomId, quantity: 3
+    });
+    assert.equal(result.response.status, 409);
+    assert.equal(result.body.code, "TOUR_CAPACITY_FULL");
+    const [[count]] = await fixture.pool.execute(
+      "SELECT COUNT(*) AS count FROM TourReservation WHERE booking_id = ?", [booking.id]
+    );
+    assert.equal(Number(count.count), 0);
   } finally { await fixture.close(); }
 });
 
@@ -93,19 +170,23 @@ async function createFixture() {
       const body = await response.json();
       return { id: body.data.principal.id, cookie: response.headers.get("set-cookie").split(";", 1)[0] };
     },
-    async booking(customerId, checkIn, checkOut) {
+    async booking(customerId, checkIn, checkOut, guestCount = 1) {
       sequence += 1;
       const [result] = await pool.execute(`INSERT INTO Booking
         (booking_code, customer_id, status, status_changed_at, channel, check_in_date, check_out_date, hold_expires_at,
          deposit_rate, room_subtotal_snapshot, service_subtotal_snapshot, discount_total_snapshot, total_snapshot)
         VALUES (?, ?, 'PENDING_PAYMENT', CURRENT_TIMESTAMP, 'ONLINE', ?, ?, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 15 MINUTE), 20, 1000, 0, 0, 1000)`,
       [`TOUR-${Date.now()}-${sequence}`, customerId, checkIn, checkOut]);
-      await pool.execute("INSERT INTO BookingRoom (booking_id, room_type_id, guest_count, nightly_rate_snapshot, net_amount) VALUES (?, 1, 1, 1000, 1000)", [result.insertId]);
-      return { id: Number(result.insertId) };
+      const [room] = await pool.execute("INSERT INTO BookingRoom (booking_id, room_type_id, guest_count, nightly_rate_snapshot, net_amount) VALUES (?, 4, ?, 1000, 1000)", [result.insertId, guestCount]);
+      return { id: Number(result.insertId), bookingRoomId: Number(room.insertId) };
     },
     async createRound(cookie, tourDate, startTime, capacity) {
       const result = await request(cookie, "/api/staff/tours/rounds", { serviceId: 5, tourDate, startTime, capacity, status: "OPEN" });
       assert.equal(result.response.status, 201); return result.body.data;
+    },
+    async get(pathname, cookie = "") {
+      const response = await fetch(`${baseUrl}${pathname}`, { headers: cookie ? { Cookie: cookie } : {} });
+      return { response, body: await response.json() };
     },
     async close() { await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve())); await pool.end(); }
   };

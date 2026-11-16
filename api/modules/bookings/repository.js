@@ -315,7 +315,7 @@ export class BookingsRepository {
     const booking = bookingRows[0];
     if (!booking) throw new ApiError(404, "BOOKING_NOT_FOUND", "Booking was not found");
 
-    const [rooms, services, promotions, paymentRows, timeline, review] = await Promise.all([
+    const [rooms, tours, services, promotions, paymentRows, timeline, review] = await Promise.all([
       this.pool.execute(`
         SELECT br.booking_room_id AS id, br.room_type_id AS roomTypeId,
                rt.type_name AS roomTypeName, br.guest_count AS guestCount,
@@ -324,6 +324,21 @@ export class BookingsRepository {
         FROM BookingRoom br JOIN RoomType rt ON rt.room_type_id = br.room_type_id
         WHERE br.booking_id = ? ORDER BY br.booking_room_id
       `, [bookingId]).then(([rows]) => rows),
+      this.pool.execute(`
+        SELECT tr.tour_round_id AS roundId, s.name,
+               JSON_UNQUOTE(JSON_EXTRACT(s.schedule_json, '$.location')) AS location,
+               DATE_FORMAT(round_data.tour_date, '%Y-%m-%d') AS tourDate,
+               TIME_FORMAT(round_data.start_time, '%H:%i:%s') AS startTime,
+               tr.status, COUNT(*) AS quantity,
+               CAST(SUM(tr.unit_price_snapshot) AS CHAR) AS amount
+        FROM TourReservation tr
+        JOIN TourRound round_data ON round_data.tour_round_id = tr.tour_round_id
+        JOIN Service s ON s.service_id = round_data.service_id
+        WHERE tr.booking_id = ? AND tr.status <> 'CANCELLED'
+        GROUP BY tr.tour_round_id, s.name, location, round_data.tour_date,
+                 round_data.start_time, tr.status
+        ORDER BY round_data.tour_date, round_data.start_time, tr.tour_round_id
+      `, [bookingId]).then(([rows]) => rows.map((row) => ({ ...row, roundId: Number(row.roundId), quantity: Number(row.quantity) }))),
       this.pool.execute(`
         SELECT bs.booking_service_id AS id, bs.service_id AS serviceId,
                s.name, s.service_kind AS serviceKind, bs.status,
@@ -368,6 +383,7 @@ export class BookingsRepository {
       ...booking,
       rooms,
       services,
+      tours,
       promotions,
       payment: {
         paid: centsToDecimal(paidCents),

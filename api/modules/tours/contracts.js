@@ -27,6 +27,15 @@ export function tourParticipant(body) {
   };
 }
 
+export function tourParty(body) {
+  const value = requireObject(body);
+  return {
+    tourRoundId: integer(value.tourRoundId, "tourRoundId", 1, Number.MAX_SAFE_INTEGER),
+    bookingRoomId: integer(value.bookingRoomId, "bookingRoomId", 1, Number.MAX_SAFE_INTEGER),
+    quantity: integer(value.quantity, "quantity", 1, 10)
+  };
+}
+
 export function roundsQuery(query, today) {
   const from = date(query.from ?? today, "from");
   const to = date(query.to ?? from, "to");
