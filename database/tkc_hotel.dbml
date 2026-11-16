@@ -1,0 +1,522 @@
+Enum "AuditLog_actor_type_enum" {
+  "SYSTEM"
+  "CUSTOMER"
+  "EMPLOYEE"
+}
+
+Enum "ChatMessage_sender_type_enum" {
+  "CUSTOMER"
+  "EMPLOYEE"
+}
+
+Enum "Customer_member_status_enum" {
+  "WALK_IN"
+  "ACTIVE"
+  "SUSPENDED"
+}
+
+Enum "Payment_transaction_type_enum" {
+  "PAYMENT"
+  "DEPOSIT"
+  "BALANCE"
+  "FULL_PAYMENT"
+  "SERVICE_PAYMENT"
+  "REFUND_REQUEST"
+  "REFUND_PAYOUT"
+}
+
+Enum "Payment_direction_enum" {
+  "IN"
+  "OUT"
+  "NONE"
+}
+
+Enum "Review_status_enum" {
+  "PUBLISHED"
+  "HIDDEN"
+}
+
+Enum "RoomEvent_event_type_enum" {
+  "CLEANING_QUEUED"
+  "CLEANING_STARTED"
+  "CLEANING_COMPLETED"
+  "DAMAGE_REPORTED"
+  "DAMAGE_REVIEWED"
+  "DAMAGE_RESOLVED"
+  "ROOM_CLOSED"
+  "ROOM_REOPENED"
+}
+
+Enum "Service_service_kind_enum" {
+  "OTHER"
+  "BREAKFAST"
+  "FITNESS"
+  "SAUNA"
+  "POOL"
+  "TOUR"
+  "ATTRACTION"
+}
+
+Enum "TourRound_status_enum" {
+  "OPEN"
+  "CLOSED"
+  "CANCELLED"
+}
+
+Table "AuditLog" {
+  "audit_log_id" bigint [pk, not null, increment]
+  "entity_type" varchar(50) [not null]
+  "entity_id" bigint [not null]
+  "action" varchar(50) [not null]
+  "actor_type" AuditLog_actor_type_enum [not null]
+  "actor_customer_id" int
+  "actor_employee_id" int
+  "before_data" json
+  "after_data" json
+  "reason" text
+  "created_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    actor_customer_id [name: "fk_audit_log_customer"]
+    (entity_type, entity_id, created_at) [name: "idx_audit_log_target"]
+    (actor_employee_id, created_at) [name: "idx_audit_log_employee"]
+  }
+}
+
+Table "Booking" {
+  "booking_id" int [pk, not null, increment]
+  "booking_code" varchar(20) [not null]
+  "customer_id" int [not null]
+  "status" varchar(50) [not null]
+  "status_changed_at" timestamp
+  "status_changed_by" int
+  "channel" varchar(20)
+  "check_in_date" date [not null]
+  "check_out_date" date [not null]
+  "expected_arrival_at" timestamp
+  "hold_expires_at" timestamp
+  "proof_sent_at" timestamp
+  "deposit_rate" decimal(5,2) [not null]
+  "room_subtotal_snapshot" decimal(12,2)
+  "service_subtotal_snapshot" decimal(12,2)
+  "discount_total_snapshot" decimal(12,2)
+  "total_snapshot" decimal(12,2) [not null]
+  "actual_check_in_at" timestamp
+  "actual_check_out_at" timestamp
+  "checked_in_by" int
+  "checked_out_by" int
+  "created_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  "updated_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    booking_code [unique, name: "uq_booking_code"]
+    customer_id [name: "customer_id"]
+    status_changed_by [name: "fk_booking_status_changed_by"]
+    checked_in_by [name: "fk_booking_checked_in_by"]
+    checked_out_by [name: "fk_booking_checked_out_by"]
+    (status, check_in_date, check_out_date, hold_expires_at) [name: "idx_booking_availability"]
+  }
+}
+
+Table "BookingPromotion" {
+  "booking_promotion_id" int [pk, not null, increment]
+  "booking_id" int [not null]
+  "promotion_id" int [not null]
+  "sequence_no" int [not null]
+  "percent_snapshot" decimal(5,2) [not null]
+  "base_amount_before" decimal(12,2) [not null]
+  "discount_amount" decimal(12,2) [not null]
+  "base_amount_after" decimal(12,2) [not null]
+  "applied_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (booking_id, promotion_id) [unique, name: "uq_booking_promotion"]
+    (booking_id, sequence_no) [unique, name: "uq_booking_promotion_sequence"]
+    promotion_id [name: "fk_booking_promotion_promotion"]
+  }
+}
+
+Table "BookingRoom" {
+  "booking_room_id" int [pk, not null, increment]
+  "booking_id" int [not null]
+  "room_type_id" int [not null]
+  "guest_count" int [not null]
+  "nightly_rate_snapshot" decimal(12,2) [not null]
+  "net_amount" decimal(12,2) [not null]
+
+  Indexes {
+    booking_id [name: "booking_id"]
+    room_type_id [name: "room_type_id"]
+  }
+}
+
+Table "BookingService" {
+  "booking_service_id" int [pk, not null, increment]
+  "booking_id" int [not null]
+  "service_id" int [not null]
+  "added_by" int
+  "selected_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  "status" varchar(30) [not null, default: 'SELECTED']
+
+  Indexes {
+    service_id [name: "service_type"]
+    added_by [name: "added_by"]
+    (booking_id, status, service_id) [name: "idx_booking_service_booking_status"]
+  }
+}
+
+Table "ChatMessage" {
+  "message_id" int [pk, not null, increment]
+  "customer_id" int [not null]
+  "sender_type" ChatMessage_sender_type_enum [not null]
+  "sender_employee_id" int
+  "message_text" text [not null]
+  "sent_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  "read_at" timestamp
+
+  Indexes {
+    sender_employee_id [name: "fk_chat_message_employee"]
+    (customer_id, sent_at) [name: "idx_chat_message_customer_time"]
+  }
+}
+
+Table "Customer" {
+  "customer_id" int [pk, not null, increment]
+  "user_id" int [note: 'Legacy account reference; API Plan B does not use this column']
+  "full_name" varchar(150) [not null]
+  "email" varchar(255)
+  "phone" varchar(20) [not null]
+  "identity_type" varchar(20) [not null]
+  "identity_number" varchar(30) [not null]
+  "password_hash" varchar(255)
+  "member_status" Customer_member_status_enum [not null, default: 'WALK_IN']
+  "registered_at" timestamp
+  "last_login_at" timestamp
+  "active" tinyint(1) [not null, default: '1']
+  "created_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  "updated_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    email [unique, name: "uq_customer_email"]
+  }
+}
+
+Table "Employee" {
+  "employee_id" int [pk, not null, increment]
+  "department_name" varchar(100) [not null]
+  "role_name" varchar(100) [not null]
+  "name" varchar(150) [not null]
+  "email" varchar(255) [not null]
+  "password_hash" varchar(255) [not null]
+  "active" tinyint(1) [not null, default: '1']
+
+  Indexes {
+    email [unique, name: "email"]
+  }
+}
+
+Table "Payment" {
+  "payment_id" int [pk, not null, increment]
+  "related_payment_id" int
+  "booking_id" int [not null]
+  "transaction_type" Payment_transaction_type_enum [not null, default: 'PAYMENT']
+  "direction" Payment_direction_enum [not null, default: 'IN']
+  "verified_by" int
+  "method" varchar(30)
+  "amount" decimal(12,2) [not null]
+  "status" varchar(30) [not null]
+  "proof_reference" varchar(500)
+  "submitted_at" timestamp [not null]
+  "auto_check_result" text
+  "verified_at" timestamp
+  "requested_by" int
+  "requested_at" timestamp
+  "request_reason" text
+  "approved_by" int
+  "approved_at" timestamp
+  "processed_by" int
+  "processed_at" timestamp
+  "rejection_reason" varchar(250)
+  "idempotency_key" varchar(100)
+  "created_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    idempotency_key [unique, name: "uq_payment_idempotency_key"]
+    verified_by [name: "verified_by"]
+    related_payment_id [name: "fk_payment_related_payment"]
+    requested_by [name: "fk_payment_requested_by"]
+    approved_by [name: "fk_payment_approved_by"]
+    processed_by [name: "fk_payment_processed_by"]
+    (booking_id, status, transaction_type) [name: "idx_payment_booking_status"]
+  }
+}
+
+Table "Promotion" {
+  "promotion_id" int [pk, not null, increment]
+  "code" varchar(50) [not null]
+  "name" varchar(150) [not null]
+  "discount_percent" decimal(5,2) [not null]
+  "priority" int [not null, default: '0']
+  "valid_from" timestamp
+  "valid_until" timestamp
+  "active" tinyint(1) [not null, default: '1']
+  "created_by" int
+  "created_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  "updated_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    code [unique, name: "uq_promotion_code"]
+    created_by [name: "fk_promotion_created_by"]
+  }
+}
+
+Table "Review" {
+  "review_id" int [pk, not null, increment]
+  "booking_id" int [not null]
+  "rating" tinyint [not null]
+  "content" text [not null]
+  "status" Review_status_enum [not null, default: 'PUBLISHED']
+  "created_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  "hidden_by" int
+  "hidden_at" timestamp
+  "hidden_reason" varchar(500)
+
+  Indexes {
+    hidden_by [name: "fk_review_hidden_by"]
+    (booking_id, status, created_at) [name: "idx_review_booking_status"]
+  }
+}
+
+Table "Room" {
+  "room_id" int [pk, not null, increment]
+  "room_type_id" int [not null]
+  "room_code" varchar(20) [not null]
+  "current_status" varchar(100) [not null, default: 'AVAILABLE']
+  "status_changed_at" timestamp
+  "status_changed_by" int
+  "status_reason" varchar(250)
+  "status_version" int [not null, default: '0']
+  "area" varchar(100)
+  "updated_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  "damage_item" varchar(150)
+  "damage_description" text
+  "damage_photo_reference" varchar(500)
+  "damage_reported_at" timestamp
+  "damage_reported_by" int
+
+  Indexes {
+    room_code [unique, name: "room_code"]
+    status_changed_by [name: "fk_room_status_changed_by"]
+    damage_reported_by [name: "fk_room_damage_reported_by"]
+    (room_type_id, current_status) [name: "idx_room_type_status"]
+  }
+}
+
+Table "RoomAssignment" {
+  "assignment_id" int [pk, not null, increment]
+  "booking_room_id" int [not null]
+  "room_id" int [not null]
+  "assigned_by" int [not null]
+  "approved_by" int
+  "effective_from" timestamp [not null]
+  "effective_to" timestamp
+  "reason" text
+  "assigned_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    booking_room_id [name: "booking_room_id"]
+    room_id [name: "room_id"]
+    assigned_by [name: "assigned_by"]
+    approved_by [name: "approved_by"]
+  }
+}
+
+Table "RoomEvent" {
+  "room_event_id" int [pk, not null, increment]
+  "room_id" int [not null]
+  "booking_room_id" int
+  "event_type" RoomEvent_event_type_enum [not null]
+  "status" varchar(30)
+  "employee_id" int
+  "related_event_id" int
+  "item" varchar(150)
+  "description" text
+  "photo_reference" varchar(500)
+  "reason" text
+  "started_at" timestamp
+  "completed_at" timestamp
+  "effective_from" timestamp
+  "effective_to" timestamp
+  "created_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    booking_room_id [name: "fk_room_event_booking_room"]
+    employee_id [name: "fk_room_event_employee"]
+    related_event_id [name: "fk_room_event_related_event"]
+    (room_id, created_at, event_type) [name: "idx_room_event_room_created"]
+  }
+}
+
+Table "RoomType" {
+  "room_type_id" int [pk, not null, increment]
+  "type_name" varchar(50) [not null]
+  "capacity" int [not null]
+  "price_per_night" decimal(12,2) [not null]
+  "breakfast_daily_rate" decimal(12,2) [not null]
+}
+
+Table "Service" {
+  "service_id" int [pk, not null, increment]
+  "name" varchar(100) [not null]
+  "service_kind" Service_service_kind_enum [not null, default: 'OTHER']
+  "description" text
+  "image_reference" varchar(500)
+  "season" varchar(30)
+  "visible" tinyint(1) [not null, default: '1']
+  "schedule_json" json
+  "charge_unit" varchar(30) [not null]
+  "default_rate" decimal(12,2) [not null]
+  "included_in_room" tinyint(1) [not null, default: '0']
+  "active" tinyint(1) [not null, default: '1']
+  "created_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  "updated_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    name [unique, name: "uq_service_name"]
+  }
+}
+
+Table "ServiceUsage" {
+  "service_usage_id" int [pk, not null, increment]
+  "booking_service_id" int [not null]
+  "booking_room_id" int [not null]
+  "usage_date" date
+  "unit_price_snapshot" decimal(12,2) [not null]
+  "quantity" int [not null, default: '1']
+  "status" varchar(30) [not null, default: 'ACTIVE']
+
+  Indexes {
+    booking_service_id [name: "booking_service_id"]
+    booking_room_id [name: "booking_room_id"]
+  }
+}
+
+Table "TourReservation" {
+  "tour_reservation_id" int [pk, not null, increment]
+  "booking_id" int [not null]
+  "tour_round_id" int [not null]
+  "participant_code" varchar(100) [not null]
+  "participant_name" varchar(150)
+  "usage_sequence_for_day" int [not null, default: '1']
+  "unit_price_snapshot" decimal(12,2) [not null, default: '50.00']
+  "recorded_by" int
+  "status" varchar(30) [not null, default: 'PENDING_PAYMENT']
+  "created_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (booking_id, tour_round_id, participant_code) [unique, name: "uq_tour_reservation_participant"]
+    recorded_by [name: "recorded_by"]
+    (tour_round_id, status) [name: "idx_tour_reservation_round_status"]
+  }
+}
+
+Table "TourRound" {
+  "tour_round_id" int [pk, not null, increment]
+  "service_id" int [not null]
+  "tour_date" date [not null]
+  "start_time" time [not null]
+  "capacity" int [not null, default: '10']
+  "status" TourRound_status_enum [not null, default: 'OPEN']
+  "created_by" int
+  "created_at" timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (service_id, tour_date, start_time) [unique, name: "uq_tour_round"]
+    created_by [name: "fk_tour_round_created_by"]
+    (tour_date, status, start_time) [name: "idx_tour_round_date_status"]
+  }
+}
+
+Ref "fk_audit_log_customer":"Customer"."customer_id" ?<? "AuditLog"."actor_customer_id" [update: restrict, delete: restrict]
+
+Ref "fk_audit_log_employee":"Employee"."employee_id" ?<? "AuditLog"."actor_employee_id" [update: restrict, delete: restrict]
+
+Ref "booking_ibfk_1":"Customer"."customer_id" <? "Booking"."customer_id"
+
+Ref "fk_booking_checked_in_by":"Employee"."employee_id" ?<? "Booking"."checked_in_by" [update: restrict, delete: restrict]
+
+Ref "fk_booking_checked_out_by":"Employee"."employee_id" ?<? "Booking"."checked_out_by" [update: restrict, delete: restrict]
+
+Ref "fk_booking_status_changed_by":"Employee"."employee_id" ?<? "Booking"."status_changed_by" [update: restrict, delete: restrict]
+
+Ref "fk_booking_promotion_booking":"Booking"."booking_id" <? "BookingPromotion"."booking_id" [update: restrict, delete: restrict]
+
+Ref "fk_booking_promotion_promotion":"Promotion"."promotion_id" <? "BookingPromotion"."promotion_id" [update: restrict, delete: restrict]
+
+Ref "bookingroom_ibfk_1":"Booking"."booking_id" <? "BookingRoom"."booking_id"
+
+Ref "bookingroom_ibfk_2":"RoomType"."room_type_id" <? "BookingRoom"."room_type_id"
+
+Ref "bookingservice_ibfk_1":"Booking"."booking_id" <? "BookingService"."booking_id"
+
+Ref "bookingservice_ibfk_2":"Service"."service_id" <? "BookingService"."service_id"
+
+Ref "bookingservice_ibfk_3":"Employee"."employee_id" ?<? "BookingService"."added_by"
+
+Ref "fk_chat_message_customer":"Customer"."customer_id" <? "ChatMessage"."customer_id" [update: restrict, delete: restrict]
+
+Ref "fk_chat_message_employee":"Employee"."employee_id" ?<? "ChatMessage"."sender_employee_id" [update: restrict, delete: restrict]
+
+Ref "fk_payment_approved_by":"Employee"."employee_id" ?<? "Payment"."approved_by" [update: restrict, delete: restrict]
+
+Ref "fk_payment_processed_by":"Employee"."employee_id" ?<? "Payment"."processed_by" [update: restrict, delete: restrict]
+
+Ref "fk_payment_related_payment":"Payment"."payment_id" ?<? "Payment"."related_payment_id" [update: restrict, delete: restrict]
+
+Ref "fk_payment_requested_by":"Employee"."employee_id" ?<? "Payment"."requested_by" [update: restrict, delete: restrict]
+
+Ref "payment_ibfk_1":"Booking"."booking_id" <? "Payment"."booking_id"
+
+Ref "payment_ibfk_2":"Employee"."employee_id" ?<? "Payment"."verified_by"
+
+Ref "fk_promotion_created_by":"Employee"."employee_id" ?<? "Promotion"."created_by" [update: restrict, delete: restrict]
+
+Ref "fk_review_booking":"Booking"."booking_id" <? "Review"."booking_id" [update: restrict, delete: restrict]
+
+Ref "fk_review_hidden_by":"Employee"."employee_id" ?<? "Review"."hidden_by" [update: restrict, delete: restrict]
+
+Ref "fk_room_status_changed_by":"Employee"."employee_id" ?<? "Room"."status_changed_by" [update: restrict, delete: restrict]
+
+Ref "fk_room_damage_reported_by":"Employee"."employee_id" ?<? "Room"."damage_reported_by" [update: restrict, delete: restrict]
+
+Ref "room_ibfk_1":"RoomType"."room_type_id" <? "Room"."room_type_id"
+
+Ref "roomassignment_ibfk_1":"BookingRoom"."booking_room_id" <? "RoomAssignment"."booking_room_id"
+
+Ref "roomassignment_ibfk_2":"Room"."room_id" <? "RoomAssignment"."room_id"
+
+Ref "roomassignment_ibfk_3":"Employee"."employee_id" <? "RoomAssignment"."assigned_by"
+
+Ref "roomassignment_ibfk_4":"Employee"."employee_id" ?<? "RoomAssignment"."approved_by"
+
+Ref "fk_room_event_booking_room":"BookingRoom"."booking_room_id" ?<? "RoomEvent"."booking_room_id" [update: restrict, delete: restrict]
+
+Ref "fk_room_event_employee":"Employee"."employee_id" ?<? "RoomEvent"."employee_id" [update: restrict, delete: restrict]
+
+Ref "fk_room_event_related_event":"RoomEvent"."room_event_id" ?<? "RoomEvent"."related_event_id" [update: restrict, delete: restrict]
+
+Ref "fk_room_event_room":"Room"."room_id" <? "RoomEvent"."room_id" [update: restrict, delete: restrict]
+
+Ref "serviceusage_ibfk_1":"BookingService"."booking_service_id" <? "ServiceUsage"."booking_service_id"
+
+Ref "serviceusage_ibfk_2":"BookingRoom"."booking_room_id" <? "ServiceUsage"."booking_room_id"
+
+Ref "fk_tour_reservation_round":"TourRound"."tour_round_id" <? "TourReservation"."tour_round_id" [update: restrict, delete: restrict]
+
+Ref "tourreservation_ibfk_1":"Booking"."booking_id" <? "TourReservation"."booking_id"
+
+Ref "tourreservation_ibfk_2":"Employee"."employee_id" ?<? "TourReservation"."recorded_by"
+
+Ref "fk_tour_round_created_by":"Employee"."employee_id" ?<? "TourRound"."created_by" [update: restrict, delete: restrict]
+
+Ref "fk_tour_round_service":"Service"."service_id" <? "TourRound"."service_id" [update: restrict, delete: restrict]
