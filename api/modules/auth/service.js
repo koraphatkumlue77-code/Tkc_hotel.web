@@ -75,6 +75,32 @@ export class AuthService {
       return null;
     }
   }
+
+  async updateProfile(body, principal) {
+    requireCustomer(principal);
+    const value = requireObject(body);
+    const record = await this.repository.updateCustomerProfile(principal.id, {
+      fullName: requireString("full_name", value.full_name, { max: 150 }),
+      phone: requireString("phone", value.phone, { max: 20 })
+    });
+    return toPublicPrincipal(record);
+  }
+
+  async changePassword(body, principal) {
+    requireCustomer(principal);
+    const value = requireObject(body);
+    const currentPassword = requireString("current_password", value.current_password, { max: 128 });
+    const newPassword = validatePassword("new_password", value.new_password);
+    const record = await this.repository.findCustomerById(principal.id);
+    if (!record || !await bcrypt.compare(currentPassword, record.passwordHash)) {
+      throw new ApiError(401, "INVALID_CURRENT_PASSWORD", "Current password is incorrect");
+    }
+    if (await bcrypt.compare(newPassword, record.passwordHash)) {
+      throw new ApiError(400, "PASSWORD_UNCHANGED", "New password must be different");
+    }
+    const passwordHash = await bcrypt.hash(newPassword, this.bcryptCost);
+    await this.repository.updateCustomerPassword(principal.id, passwordHash);
+  }
 }
 
 export function normalizeEmployeeRole(value) {
@@ -109,7 +135,8 @@ export function toPublicPrincipal(record) {
       phone: record.phone,
       identityType: record.identityType,
       identityNumber: record.identityNumber,
-      memberStatus: record.memberStatus
+      memberStatus: record.memberStatus,
+      registeredAt: record.registeredAt
     });
   } else {
     Object.assign(principal, {
@@ -122,12 +149,7 @@ export function toPublicPrincipal(record) {
 
 function validateRegistration(body) {
   const value = requireObject(body);
-  const password = requireString("password", value.password, { min: 12, max: 128 });
-  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
-    throw new ApiError(400, "VALIDATION_ERROR", "Request validation failed", {
-      fields: { password: "Must include a letter and a number" }
-    });
-  }
+  const password = validatePassword("password", value.password);
   return {
     fullName: requireString("full_name", value.full_name, { max: 150 }),
     email: requireEmail("email", value.email),
@@ -136,6 +158,22 @@ function validateRegistration(body) {
     identityNumber: requireString("identity_number", value.identity_number, { max: 30 }),
     password
   };
+}
+
+function validatePassword(field, rawValue) {
+  const password = requireString(field, rawValue, { min: 12, max: 128 });
+  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    throw new ApiError(400, "VALIDATION_ERROR", "Request validation failed", {
+      fields: { [field]: "Must include a letter and a number" }
+    });
+  }
+  return password;
+}
+
+function requireCustomer(principal) {
+  if (principal?.type !== "customer") {
+    throw new ApiError(403, "CUSTOMER_REQUIRED", "A customer account is required");
+  }
 }
 
 function validateLogin(body) {

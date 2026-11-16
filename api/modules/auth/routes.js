@@ -31,6 +31,16 @@ export function createAuthModule({ pool, authConfig, bcryptCost }) {
     response.status(200).json({ data: { principal: request.principal } });
   });
 
+  router.patch("/profile", session.authenticate, asyncHandler(async (request, response) => {
+    const principal = await service.updateProfile(request.body, request.principal);
+    response.status(200).json({ data: { principal } });
+  }));
+
+  router.post("/change-password", session.authenticate, asyncHandler(async (request, response) => {
+    await service.changePassword(request.body, request.principal);
+    response.status(204).end();
+  }));
+
   return { router, authenticate: session.authenticate };
 }
 

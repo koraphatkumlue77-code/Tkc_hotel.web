@@ -71,6 +71,57 @@ export class AuthRepository {
     return rows[0] ?? null;
   }
 
+  async updateCustomerProfile(id, data) {
+    const connection = await this.pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const before = await this.findCustomerById(id, connection);
+      await connection.execute(
+        "UPDATE Customer SET full_name = ?, phone = ? WHERE customer_id = ?",
+        [data.fullName, data.phone, id]
+      );
+      const after = await this.findCustomerById(id, connection);
+      await writeAudit(connection, {
+        entityType: "Customer",
+        entityId: id,
+        action: "PROFILE_UPDATE",
+        actor: { type: "customer", id },
+        before: publicPrincipal(before),
+        after: publicPrincipal(after)
+      });
+      await connection.commit();
+      return after;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
+  async updateCustomerPassword(id, passwordHash) {
+    const connection = await this.pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      await connection.execute(
+        "UPDATE Customer SET password_hash = ? WHERE customer_id = ?",
+        [passwordHash, id]
+      );
+      await writeAudit(connection, {
+        entityType: "Customer",
+        entityId: id,
+        action: "PASSWORD_CHANGE",
+        actor: { type: "customer", id }
+      });
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
   async recordLogin(principal) {
     const connection = await this.pool.getConnection();
     try {
@@ -102,7 +153,7 @@ const CUSTOMER_SELECT = `
   SELECT customer_id AS id, 'customer' AS type, full_name AS fullName,
          email, phone, identity_type AS identityType,
          identity_number AS identityNumber, password_hash AS passwordHash,
-         member_status AS memberStatus, active
+         member_status AS memberStatus, registered_at AS registeredAt, active
   FROM Customer`;
 
 const EMPLOYEE_SELECT = `

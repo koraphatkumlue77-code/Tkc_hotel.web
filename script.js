@@ -383,13 +383,20 @@ const modalIn = $('#modal-checkin');
 const modalOut = $('#modal-checkout');
 const bookingForm = $('#booking-form');
 const bookingsButton = $('#my-bookings-button');
+const customerProfile = $('#customer-profile');
+const customerProfileToggle = $('#customer-profile-toggle');
+const customerProfileMenu = $('#customer-profile-menu');
+const customerLoginButton = $('#customer-login-button');
+const employeeLoginButton = $('#employee-login-button');
 const bookingError = $('#booking-error');
 const slipInput = $('#slip-upload-input');
 const breakfastToggle = $('#modal-breakfast-checkbox');
 const breakfastOptions = $('#breakfast-date-options');
 const selectedRooms = $('#selected-rooms');
 const bookingDate = new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short' });
+const profileDate = new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
 let customerEmail = '';
+let customerPrincipal = null;
 let pendingRoom = null;
 let bookingRooms = [];
 
@@ -643,13 +650,62 @@ bookingForm.addEventListener('submit', async event => {
   }
 });
 
-function startCustomerSession(email) {
-  customerEmail = email;
+function closeCustomerProfileMenu() {
+  customerProfileMenu.hidden = true;
+  customerProfileToggle.setAttribute('aria-expanded', 'false');
+}
+
+function renderCustomerProfile(principal) {
+  $('#profile-trigger-name').textContent = principal.fullName;
+  $('#profile-full-name').textContent = principal.fullName;
+  $('#profile-email').textContent = principal.email;
+  $('#profile-registered-at').textContent = principal.registeredAt
+    ? `สมัครเมื่อ ${profileDate.format(new Date(principal.registeredAt))}`
+    : 'สมาชิก TKC';
+}
+
+function startCustomerSession(principal) {
+  customerPrincipal = principal;
+  customerEmail = principal.email;
   bookingsButton.hidden = false;
+  customerProfile.hidden = false;
+  customerLoginButton.hidden = true;
+  employeeLoginButton.hidden = true;
+  renderCustomerProfile(principal);
+  closeCustomerProfileMenu();
   const room = pendingRoom;
   pendingRoom = null;
   if (room) requestAnimationFrame(() => openBooking(room));
 }
+
+function endCustomerSession() {
+  customerPrincipal = null;
+  customerEmail = '';
+  pendingRoom = null;
+  bookingsButton.hidden = true;
+  customerProfile.hidden = true;
+  customerLoginButton.hidden = false;
+  employeeLoginButton.hidden = false;
+  closeCustomerProfileMenu();
+  if ($('#my-bookings-dialog').open) $('#my-bookings-dialog').close();
+}
+
+customerProfileToggle.addEventListener('click', () => {
+  const willOpen = customerProfileMenu.hidden;
+  customerProfileMenu.hidden = !willOpen;
+  customerProfileToggle.setAttribute('aria-expanded', String(willOpen));
+});
+
+document.addEventListener('click', event => {
+  if (!customerProfile.contains(event.target)) closeCustomerProfileMenu();
+});
+
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && !customerProfileMenu.hidden) {
+    closeCustomerProfileMenu();
+    customerProfileToggle.focus();
+  }
+});
 
 // bykoraphat: ประวัติการจองโหลดจาก API และคงอยู่หลังรีเฟรช
 const paymentStatuses = {
@@ -791,13 +847,88 @@ myBookingsList.addEventListener('submit', async event => {
 });
 
 bookingsButton.addEventListener('click', openMyBookings);
-$('#customer-sign-out').addEventListener('click', async () => {
+async function signOutCustomer() {
   await apiFetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-  customerEmail = '';
-  pendingRoom = null;
-  bookingsButton.hidden = true;
-  $('#my-bookings-dialog').close();
-  $('[data-login="ลูกค้า"]').focus();
+  endCustomerSession();
+  customerLoginButton.focus();
+}
+
+$('#customer-sign-out').addEventListener('click', signOutCustomer);
+$('#profile-sign-out').addEventListener('click', signOutCustomer);
+
+$('#open-profile-edit').addEventListener('click', () => {
+  closeCustomerProfileMenu();
+  const form = $('#profile-edit-form');
+  form.elements.full_name.value = customerPrincipal.fullName;
+  form.elements.phone.value = customerPrincipal.phone;
+  $('#profile-edit-email').value = customerPrincipal.email;
+  $('#profile-edit-error').hidden = true;
+  $('#profile-edit-dialog').showModal();
+});
+
+$('#profile-edit-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const errorText = $('#profile-edit-error');
+  const submit = event.submitter;
+  submit.disabled = true;
+  try {
+    const data = new FormData(event.target);
+    const result = await apiFetch('/api/auth/profile', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        full_name: data.get('full_name'),
+        phone: data.get('phone')
+      })
+    });
+    startCustomerSession(result.data.principal);
+    $('#profile-edit-dialog').close();
+    toast('บันทึกข้อมูลส่วนตัวแล้ว');
+  } catch (error) {
+    errorText.textContent = error.message;
+    errorText.hidden = false;
+  } finally {
+    submit.disabled = false;
+  }
+});
+
+$('#open-change-password').addEventListener('click', () => {
+  closeCustomerProfileMenu();
+  $('#change-password-form').reset();
+  $('#change-password-error').hidden = true;
+  $('#change-password-dialog').showModal();
+});
+
+$('#change-password-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const form = event.target;
+  const errorText = $('#change-password-error');
+  if (form.elements.new_password.value !== form.elements.confirm_password.value) {
+    errorText.textContent = 'รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน';
+    errorText.hidden = false;
+    form.elements.confirm_password.focus();
+    return;
+  }
+  const submit = event.submitter;
+  submit.disabled = true;
+  try {
+    await apiFetch('/api/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({
+        current_password: form.elements.current_password.value,
+        new_password: form.elements.new_password.value
+      })
+    });
+    $('#change-password-dialog').close();
+    form.reset();
+    toast('เปลี่ยนรหัสผ่านเรียบร้อยแล้ว');
+  } catch (error) {
+    errorText.textContent = error.code === 'INVALID_CURRENT_PASSWORD'
+      ? 'รหัสผ่านปัจจุบันไม่ถูกต้อง'
+      : error.message;
+    errorText.hidden = false;
+  } finally {
+    submit.disabled = false;
+  }
 });
 
 /* ==================== ระบบ Login ลูกค้า / พนักงาน & Register ==================== */
@@ -846,7 +977,7 @@ $('#login-form')?.addEventListener('submit', async event => {
     event.target.reset();
     if (principal.type === 'employee') enterStaffSystem(staffPrincipal(principal));
     else {
-      startCustomerSession(principal.email);
+      startCustomerSession(principal);
       toast(`ยินดีต้อนรับ ${principal.fullName}`);
     }
   } catch (error) {
@@ -902,7 +1033,7 @@ $('#register-form')?.addEventListener('submit', async event => {
         password: $('#reg-password').value
       })
     });
-    startCustomerSession(result.data.principal.email);
+    startCustomerSession(result.data.principal);
     $('#register-dialog').close();
     event.target.reset();
     toast(`สมัครสมาชิกสำเร็จ ยินดีต้อนรับ ${result.data.principal.fullName}`);
@@ -927,7 +1058,7 @@ async function restoreSession() {
   try {
     const { data } = await apiFetch('/api/auth/me');
     if (data.principal.type === 'employee') enterStaffSystem(staffPrincipal(data.principal));
-    else startCustomerSession(data.principal.email);
+    else startCustomerSession(data.principal);
   } catch (error) {
     if (error.status !== 401) console.error('Session restore failed');
   }

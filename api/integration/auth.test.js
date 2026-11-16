@@ -59,6 +59,7 @@ test("authentication API persists and restores customer and employee sessions", 
     assert.equal(registration.response.status, 201);
     assert.equal(registration.body.data.principal.type, "customer");
     assert.equal(registration.body.data.principal.email, "guest@example.test");
+    assert.ok(registration.body.data.principal.registeredAt);
     assert.equal(registration.body.data.principal.password_hash, undefined);
     const customerCookie = cookieFrom(registration.response);
     assert.match(customerCookie, /^tkc_session=/);
@@ -69,7 +70,58 @@ test("authentication API persists and restores customer and employee sessions", 
       headers: { Cookie: customerCookie }
     });
     assert.equal(me.status, 200);
-    assert.equal((await me.json()).data.principal.fullName, "Test Guest");
+    const restoredPrincipal = (await me.json()).data.principal;
+    assert.equal(restoredPrincipal.fullName, "Test Guest");
+    assert.ok(restoredPrincipal.registeredAt);
+
+    const profileUpdate = await fetch(`${baseUrl}/api/auth/profile`, {
+      method: "PATCH",
+      headers: {
+        Cookie: customerCookie,
+        Origin: baseUrl,
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({ full_name: "Updated Guest", phone: "0891112222" })
+    });
+    assert.equal(profileUpdate.status, 200);
+    assert.deepEqual(
+      pick((await profileUpdate.json()).data.principal, ["fullName", "phone"]),
+      { fullName: "Updated Guest", phone: "0891112222" }
+    );
+
+    const wrongPasswordChange = await fetch(`${baseUrl}/api/auth/change-password`, {
+      method: "POST",
+      headers: {
+        Cookie: customerCookie,
+        Origin: baseUrl,
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({ current_password: "WrongPassword123!", new_password: "ChangedPass456!" })
+    });
+    assert.equal(wrongPasswordChange.status, 401);
+    assert.equal((await wrongPasswordChange.json()).code, "INVALID_CURRENT_PASSWORD");
+
+    const passwordChange = await fetch(`${baseUrl}/api/auth/change-password`, {
+      method: "POST",
+      headers: {
+        Cookie: customerCookie,
+        Origin: baseUrl,
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({ current_password: "CustomerPass123!", new_password: "ChangedPass456!" })
+    });
+    assert.equal(passwordChange.status, 204);
+
+    assert.equal((await jsonRequest(baseUrl, "/api/auth/login", {
+      account_type: "customer",
+      email: "guest@example.test",
+      password: "CustomerPass123!"
+    })).response.status, 401);
+    assert.equal((await jsonRequest(baseUrl, "/api/auth/login", {
+      account_type: "customer",
+      email: "guest@example.test",
+      password: "ChangedPass456!"
+    })).response.status, 200);
 
     const duplicate = await jsonRequest(baseUrl, "/api/auth/register", {
       full_name: "Duplicate",
@@ -93,7 +145,7 @@ test("authentication API persists and restores customer and employee sessions", 
     const customerLogin = await jsonRequest(baseUrl, "/api/auth/login", {
       account_type: "customer",
       email: "guest@example.test",
-      password: "CustomerPass123!"
+      password: "ChangedPass456!"
     });
     assert.equal(customerLogin.response.status, 200);
     assert.equal(customerLogin.body.data.principal.role, "customer");
@@ -173,6 +225,10 @@ async function jsonRequest(baseUrl, route, body) {
     body: JSON.stringify(body)
   });
   return { response, body: await response.json() };
+}
+
+function pick(value, keys) {
+  return Object.fromEntries(keys.map((key) => [key, value[key]]));
 }
 
 function cookieFrom(response) {

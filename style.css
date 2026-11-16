@@ -174,6 +174,101 @@ svg {
   gap: 10px;
 }
 
+.customer-profile {
+  position: relative;
+}
+
+.customer-profile-toggle {
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 6px 7px;
+  border: 1px solid rgba(255, 255, 255, .45);
+  border-radius: 16px;
+  background: white;
+  color: #10263e;
+  text-align: left;
+}
+
+.customer-profile-toggle:hover,
+.customer-profile-toggle:focus-visible {
+  background: #f5f7fa;
+  outline: 3px solid rgba(255, 255, 255, .25);
+}
+
+.profile-avatar {
+  width: 37px;
+  height: 37px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  background: #e8edf2;
+  color: #14304b;
+}
+
+.profile-avatar svg { width: 20px; height: 20px; }
+.profile-trigger-copy { min-width: 0; display: grid; line-height: 1.2; }
+.profile-trigger-copy small { color: #66758a; font-size: 10px; font-weight: 600; }
+.profile-trigger-copy strong { max-width: 130px; overflow: hidden; text-overflow: ellipsis; font-size: 13px; white-space: nowrap; }
+.profile-chevron { margin-left: 3px; color: #607086; font-size: 18px; transition: transform .18s ease; }
+.customer-profile-toggle[aria-expanded="true"] .profile-chevron { transform: rotate(180deg); }
+
+.customer-profile-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 330px;
+  padding: 16px;
+  border: 1px solid #dce2e8;
+  border-radius: 20px;
+  background: #fff;
+  color: #10263e;
+  box-shadow: 0 22px 55px rgba(0, 19, 44, .25);
+  z-index: 50;
+}
+
+.customer-profile-menu::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: 28px;
+  width: 12px;
+  height: 12px;
+  border-left: 1px solid #dce2e8;
+  border-top: 1px solid #dce2e8;
+  background: white;
+  transform: rotate(45deg);
+}
+
+.profile-menu-heading { display: flex; gap: 12px; align-items: center; padding: 2px 2px 14px; }
+.profile-menu-heading > div { min-width: 0; display: grid; }
+.profile-menu-heading small { color: #738196; font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+.profile-menu-heading strong { overflow: hidden; text-overflow: ellipsis; font-size: 16px; white-space: nowrap; }
+.profile-menu-heading span:not(.profile-avatar) { overflow: hidden; color: #64748b; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.profile-avatar-large { width: 46px; height: 46px; border-radius: 15px; }
+.profile-avatar-large svg { width: 24px; height: 24px; }
+
+.profile-membership {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 10px 11px;
+  border-radius: 12px;
+  background: #eef3f6;
+  color: #526277;
+  font-size: 11px;
+}
+
+.profile-member-badge { color: #0a725d; font-weight: 800; }
+.profile-menu-action { width: 100%; min-height: 43px; display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 11px; background: transparent; color: #17314c; font-size: 13px; font-weight: 700; text-align: left; }
+.profile-menu-action:hover, .profile-menu-action:focus-visible { background: #f0f3f6; outline: none; }
+.profile-menu-action svg { width: 17px; height: 17px; }
+.profile-sign-out { margin-top: 7px; border-top: 1px solid #e3e7eb; border-radius: 0 0 11px 11px; color: #b42336; }
+
 .login-button {
   background: white;
   color: #161616;
@@ -192,6 +287,10 @@ svg {
   width: 18px;
   height: 18px;
 }
+
+.profile-dialog-eyebrow { margin: 0 0 3px; color: #738196; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
+.field-note { color: #64748b; font-size: 11px; }
+.login-input-group input[readonly] { background: #edf0f4; color: #617084; cursor: not-allowed; }
 
 .language-label select {
   background: transparent;
@@ -1741,6 +1840,12 @@ blockquote { margin: 0; border: 1px solid #ffffff25; border-radius: 18px; paddin
 @media (max-width: 600px) {
   .header-actions:has(#my-bookings-button:not([hidden])) { flex-wrap: wrap; justify-content: flex-end; }
   #my-bookings-button { flex-basis: 100%; justify-content: center; }
+  .customer-profile-toggle { min-height: 43px; gap: 6px; padding: 4px 7px 4px 5px; border-radius: 13px; }
+  .profile-avatar { width: 33px; height: 33px; border-radius: 10px; }
+  .profile-trigger-copy small { display: none; }
+  .profile-trigger-copy strong { max-width: 84px; font-size: 12px; }
+  .profile-chevron { margin-left: 0; }
+  .customer-profile-menu { position: fixed; top: 76px; right: 12px; width: min(330px, calc(100vw - 24px)); }
   #booking-dialog .date-field { min-width: 0; }
   #booking-dialog .date-field input { min-width: 0; }
   .selected-booking-room { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }

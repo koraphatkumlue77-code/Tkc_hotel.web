@@ -7,15 +7,32 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 test("browser authentication uses the real API for register, login, restore, and logout", async () => {
-  const source = await readFile(path.join(root, "script.js"), "utf8");
+  const [source, html] = await Promise.all([
+    readFile(path.join(root, "script.js"), "utf8"),
+    readFile(path.join(root, "index.html"), "utf8")
+  ]);
   for (const route of [
     "/api/auth/register",
     "/api/auth/login",
     "/api/auth/me",
-    "/api/auth/logout"
+    "/api/auth/logout",
+    "/api/auth/profile",
+    "/api/auth/change-password"
   ]) {
     assert.ok(source.includes(route), route);
   }
+  for (const id of [
+    "customer-profile",
+    "customer-profile-toggle",
+    "customer-profile-menu",
+    "profile-full-name",
+    "profile-registered-at",
+    "profile-edit-dialog",
+    "change-password-dialog"
+  ]) assert.match(html, new RegExp(`id="${id}"`), id);
+  assert.match(source, /customerProfile\.hidden = false/);
+  assert.match(source, /customerLoginButton\.hidden = true/);
+  assert.match(source, /employeeLoginButton\.hidden = true/);
   assert.doesNotMatch(source, /ผ่านการตรวจฟอร์มสมัครในโหมดทดลอง/);
   assert.doesNotMatch(source, /เข้าสู่ระบบลูกค้าในโหมดทดลอง/);
 });

@@ -45,8 +45,29 @@
       <div class="header-actions">
         <!-- bykoraphat: แสดงรายการจองทางซ้ายของปุ่มเข้าสู่ระบบหลังล็อกอิน -->
         <button type="button" class="login-button" id="my-bookings-button" hidden>รายการจองของฉัน</button>
-        <button class="login-button" data-login="ลูกค้า"><svg><use href="#person"/></svg><span>เข้าสู่ระบบ</span></button>
-        <button class="login-button employee-login" data-login="พนักงาน"><span>เข้าสู่ระบบพนักงาน</span></button>
+        <button class="login-button" id="customer-login-button" data-login="ลูกค้า"><svg><use href="#person"/></svg><span>เข้าสู่ระบบ</span></button>
+        <button class="login-button employee-login" id="employee-login-button" data-login="พนักงาน"><span>เข้าสู่ระบบพนักงาน</span></button>
+        <div class="customer-profile" id="customer-profile" hidden>
+          <button type="button" class="customer-profile-toggle" id="customer-profile-toggle"
+            aria-expanded="false" aria-controls="customer-profile-menu">
+            <span class="profile-avatar" aria-hidden="true"><svg><use href="#person"/></svg></span>
+            <span class="profile-trigger-copy"><small>บัญชีของฉัน</small><strong id="profile-trigger-name">สมาชิก TKC</strong></span>
+            <span class="profile-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <div class="customer-profile-menu" id="customer-profile-menu" hidden>
+            <div class="profile-menu-heading">
+              <span class="profile-avatar profile-avatar-large" aria-hidden="true"><svg><use href="#person"/></svg></span>
+              <div><small>ข้อมูลส่วนตัว</small><strong id="profile-full-name"></strong><span id="profile-email"></span></div>
+            </div>
+            <div class="profile-membership">
+              <span class="profile-member-badge">สมาชิก TKC</span>
+              <span id="profile-registered-at"></span>
+            </div>
+            <button type="button" class="profile-menu-action" id="open-profile-edit"><span>✎</span> แก้ไขข้อมูลส่วนตัว</button>
+            <button type="button" class="profile-menu-action" id="open-change-password"><svg><use href="#lock"/></svg> เปลี่ยนรหัสผ่าน</button>
+            <button type="button" class="profile-menu-action profile-sign-out" id="profile-sign-out">ออกจากระบบ</button>
+          </div>
+        </div>
         <label class="language-label"><span class="sr-only">ภาษา</span><select id="language"><option value="th">TH</option><option value="en">EN</option></select></label>
       </div>
     </header>
@@ -947,6 +968,56 @@
     <p class="demo-note">รายการนี้โหลดจากฐานข้อมูลและยังคงอยู่หลังรีเฟรชหน้าเว็บ</p>
     <div id="my-bookings-list"></div>
     <button type="button" class="booking-outline" id="customer-sign-out">ออกจากระบบ</button>
+  </dialog>
+
+  <dialog id="profile-edit-dialog" class="custom-login-modal" aria-labelledby="profile-edit-heading">
+    <button type="button" class="modal-circle-close" data-close aria-label="ปิด">✕</button>
+    <div class="login-header-custom">
+      <p class="profile-dialog-eyebrow">MY ACCOUNT</p>
+      <h2 id="profile-edit-heading">แก้ไขข้อมูลส่วนตัว</h2>
+    </div>
+    <form id="profile-edit-form" class="login-form-body">
+      <div class="login-input-group">
+        <label for="profile-edit-name">ชื่อ – นามสกุล</label>
+        <input id="profile-edit-name" name="full_name" maxlength="150" required autocomplete="name">
+      </div>
+      <div class="login-input-group">
+        <label for="profile-edit-phone">เบอร์โทรศัพท์</label>
+        <input id="profile-edit-phone" name="phone" maxlength="20" required autocomplete="tel">
+      </div>
+      <div class="login-input-group">
+        <label for="profile-edit-email">อีเมล</label>
+        <input id="profile-edit-email" type="email" readonly aria-describedby="profile-email-note">
+        <small id="profile-email-note" class="field-note">อีเมลใช้สำหรับเข้าสู่ระบบ จึงยังไม่เปิดให้แก้ไข</small>
+      </div>
+      <p id="profile-edit-error" class="login-error-text" role="alert" hidden></p>
+      <button type="submit" class="submit-login-btn">บันทึกข้อมูล</button>
+    </form>
+  </dialog>
+
+  <dialog id="change-password-dialog" class="custom-login-modal" aria-labelledby="change-password-heading">
+    <button type="button" class="modal-circle-close" data-close aria-label="ปิด">✕</button>
+    <div class="login-header-custom">
+      <p class="profile-dialog-eyebrow">SECURITY</p>
+      <h2 id="change-password-heading">เปลี่ยนรหัสผ่าน</h2>
+    </div>
+    <form id="change-password-form" class="login-form-body">
+      <div class="login-input-group">
+        <label for="current-password">รหัสผ่านปัจจุบัน</label>
+        <input id="current-password" name="current_password" type="password" maxlength="128" required autocomplete="current-password">
+      </div>
+      <div class="login-input-group">
+        <label for="new-password">รหัสผ่านใหม่</label>
+        <input id="new-password" name="new_password" type="password" minlength="12" maxlength="128" required autocomplete="new-password" aria-describedby="new-password-note">
+        <small id="new-password-note" class="field-note">อย่างน้อย 12 ตัวอักษร และมีทั้งตัวอักษรกับตัวเลข</small>
+      </div>
+      <div class="login-input-group">
+        <label for="confirm-new-password">ยืนยันรหัสผ่านใหม่</label>
+        <input id="confirm-new-password" name="confirm_password" type="password" minlength="12" maxlength="128" required autocomplete="new-password">
+      </div>
+      <p id="change-password-error" class="login-error-text" role="alert" hidden></p>
+      <button type="submit" class="submit-login-btn">เปลี่ยนรหัสผ่าน</button>
+    </form>
   </dialog>
 
   <!-- Login Dialog -->
