@@ -1,2 +1,0 @@
-import bcrypt from"bcryptjs";import{routeId}from"../payments/contracts.js";import{employeeInput,employeeQuery}from"./contracts.js";
-export class EmployeesService{constructor(r){this.repository=r;}list(q){return this.repository.list(employeeQuery(q));}async create(body,p){const input=employeeInput(body,true);input.passwordHash=await bcrypt.hash(input.password,12);delete input.password;return this.repository.create(input,p);}update(id,body,p){return this.repository.update(routeId(id,"employeeId"),employeeInput(body,false),p);}}
