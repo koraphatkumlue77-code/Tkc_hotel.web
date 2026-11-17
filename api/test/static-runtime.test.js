@@ -36,6 +36,7 @@ test("GET / serves index.html as the landing page", async () => {
 
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type"), /text\/html/);
+  assert.match(response.headers.get("cache-control"), /no-store/);
   assert.match(await response.text(), /<title>TKC \| Never Wekes Hotel<\/title>/);
 });
 
@@ -45,8 +46,10 @@ test("GET /style.css and /script.js serve the frontend assets", async () => {
 
   assert.equal(cssResponse.status, 200);
   assert.match(cssResponse.headers.get("content-type"), /text\/css/);
+  assert.match(cssResponse.headers.get("cache-control"), /no-store/);
   assert.equal(scriptResponse.status, 200);
   assert.match(scriptResponse.headers.get("content-type"), /javascript/);
+  assert.match(scriptResponse.headers.get("cache-control"), /no-store/);
 });
 
 test("runtime never exposes configuration, database, storage, or dotfiles", async () => {

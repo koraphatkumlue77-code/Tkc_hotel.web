@@ -8,6 +8,11 @@ export function createStaysModule({ pool, authenticate }) {
   const service = new StaysService(new StaysRepository(pool));
   const router = Router();
 
+  router.get("/staff/bookings/:bookingId/available-rooms", authenticate,
+    requireRoles("reception", "superadmin"), asyncHandler(async (request, response) => {
+      const data = await service.listAvailableRooms(request.params.bookingId, request.query.bookingRoomId);
+      response.json({ data });
+    }));
   router.post("/staff/bookings/:bookingId/assignments", authenticate,
     requireRoles("reception", "superadmin"), asyncHandler(async (request, response) => {
       response.status(201).json({ data: await service.assign(request.params.bookingId, request.body, request.principal) });

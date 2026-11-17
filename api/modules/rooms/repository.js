@@ -29,7 +29,9 @@ export class RoomsRepository {
              CAST(rt.breakfast_daily_rate AS CHAR) AS breakfastDailyRate,
              COUNT(r.room_id) AS totalRooms,
              COALESCE(reserved.reserved_rooms, 0) AS reservedRooms,
-             COALESCE(closed.closed_rooms, 0) AS closedRooms
+             COALESCE(closed.closed_rooms, 0) AS closedRooms,
+             COALESCE(cleaning.cleaning_rooms, 0) AS cleaningRooms,
+             COALESCE(blocked.blocked_rooms, 0) AS blockedRooms
       FROM RoomType rt
       JOIN Room r ON r.room_type_id = rt.room_type_id
       LEFT JOIN (
@@ -59,18 +61,68 @@ export class RoomsRepository {
           )
         GROUP BY room.room_type_id
       ) closed ON closed.room_type_id = rt.room_type_id
+      LEFT JOIN (
+        SELECT room.room_type_id, COUNT(DISTINCT queued.room_id) AS cleaning_rooms
+        FROM RoomEvent queued
+        JOIN Room room ON room.room_id = queued.room_id
+        WHERE queued.event_type = 'CLEANING_QUEUED'
+          AND NOT EXISTS (
+            SELECT 1 FROM RoomEvent done
+            WHERE done.related_event_id = queued.room_event_id
+              AND done.event_type = 'CLEANING_COMPLETED'
+          )
+        GROUP BY room.room_type_id
+      ) cleaning ON cleaning.room_type_id = rt.room_type_id
+      LEFT JOIN (
+        SELECT blocked_items.room_type_id, COUNT(DISTINCT blocked_items.room_id) AS blocked_rooms
+        FROM (
+          SELECT room.room_type_id, close_event.room_id
+          FROM RoomEvent close_event
+          JOIN Room room ON room.room_id = close_event.room_id
+          WHERE close_event.event_type = 'ROOM_CLOSED'
+            AND COALESCE(close_event.effective_from, close_event.created_at) < ?
+            AND COALESCE(close_event.effective_to, '9999-12-31 23:59:59') > ?
+            AND NOT EXISTS (
+              SELECT 1 FROM RoomEvent reopen
+              WHERE reopen.related_event_id = close_event.room_event_id
+                AND reopen.event_type = 'ROOM_REOPENED'
+                AND COALESCE(reopen.effective_from, reopen.created_at) <= ?
+            )
+          UNION
+          SELECT room.room_type_id, queued.room_id
+          FROM RoomEvent queued
+          JOIN Room room ON room.room_id = queued.room_id
+          WHERE queued.event_type = 'CLEANING_QUEUED'
+            AND NOT EXISTS (
+              SELECT 1 FROM RoomEvent done
+              WHERE done.related_event_id = queued.room_event_id
+                AND done.event_type = 'CLEANING_COMPLETED'
+            )
+        ) blocked_items
+        GROUP BY blocked_items.room_type_id
+      ) blocked ON blocked.room_type_id = rt.room_type_id
       WHERE (? IS NULL OR rt.capacity >= ?)
       GROUP BY rt.room_type_id, rt.type_name, rt.capacity, rt.price_per_night,
-               rt.breakfast_daily_rate, reserved.reserved_rooms, closed.closed_rooms
+               rt.breakfast_daily_rate, reserved.reserved_rooms, closed.closed_rooms,
+               cleaning.cleaning_rooms, blocked.blocked_rooms
       ORDER BY rt.room_type_id
-    `, [checkOut, checkIn, checkOut, checkIn, checkIn, guests, guests]);
+    `, [checkOut, checkIn, checkOut, checkIn, checkIn,
+      checkOut, checkIn, checkIn, guests, guests]);
     return rows;
   }
 
-  async listStaffRooms({ status, limit, offset }) {
+  async listStaffRooms({ status, roomTypeId, limit, offset }) {
+    const conditions = [];
     const values = [];
-    const where = status ? "WHERE r.current_status = ?" : "";
-    if (status) values.push(status);
+    if (status) {
+      conditions.push("r.current_status = ?");
+      values.push(status);
+    }
+    if (roomTypeId !== null) {
+      conditions.push("r.room_type_id = ?");
+      values.push(roomTypeId);
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
     values.push(limit, offset);
     const [rows] = await this.pool.execute(`
       SELECT r.room_id AS id, r.room_code AS code, r.current_status AS status,
@@ -82,6 +134,36 @@ export class RoomsRepository {
       ORDER BY r.room_code LIMIT ? OFFSET ?
     `, values);
     return rows;
+  }
+
+  async summarizeStaffRooms({ roomTypeId, today }) {
+    const roomTypeClause = roomTypeId === null ? "" : "WHERE room_type_id = ?";
+    const roomTypeValues = roomTypeId === null ? [] : [roomTypeId];
+    const [[roomCounts]] = await this.pool.execute(`
+      SELECT
+        COALESCE(SUM(current_status = 'AVAILABLE'), 0) AS available,
+        COALESCE(SUM(current_status = 'OCCUPIED'), 0) AS occupied,
+        COALESCE(SUM(current_status = 'NEEDS_CLEANING'), 0) AS cleaning,
+        COALESCE(SUM(current_status = 'OUT_OF_SERVICE'), 0) AS outOfService
+      FROM Room ${roomTypeClause}
+    `, roomTypeValues);
+    const bookingTypeClause = roomTypeId === null ? "" : "AND br.room_type_id = ?";
+    const [[bookingCounts]] = await this.pool.execute(`
+      SELECT COUNT(*) AS booked
+      FROM BookingRoom br
+      JOIN Booking b ON b.booking_id = br.booking_id
+      WHERE b.check_in_date <= ? AND b.check_out_date > ?
+        AND b.status IN ('CONFIRMED', 'LATE_ARRIVAL')
+        ${bookingTypeClause}
+    `, [today, today, ...roomTypeValues]);
+    const booked = Number(bookingCounts.booked);
+    return {
+      available: Math.max(0, Number(roomCounts.available) - booked),
+      booked,
+      occupied: Number(roomCounts.occupied),
+      cleaning: Number(roomCounts.cleaning),
+      outOfService: Number(roomCounts.outOfService)
+    };
   }
 
   async findStaffRoomById(roomId) {

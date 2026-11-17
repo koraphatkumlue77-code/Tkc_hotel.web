@@ -8,6 +8,7 @@ import { createProofUpload, proofResponseHeaders } from "./upload.js";
 export function createPaymentsModule({ pool, authenticate, storageRoot }) {
   const service = new PaymentsService(new PaymentsRepository(pool), { storageRoot });
   const uploadProof = createProofUpload({ storageRoot });
+  const uploadOptionalProof = createProofUpload({ storageRoot, required: false });
   const router = Router();
 
   router.post(
@@ -93,6 +94,33 @@ export function createPaymentsModule({ pool, authenticate, storageRoot }) {
       });
     })
   );
+
+  router.get(
+    "/staff/settlements/preview",
+    authenticate,
+    requireRoles("reception", "superadmin"),
+    asyncHandler(async (request, response) => {
+      response.json({ data: await service.previewSettlement(request.query) });
+    })
+  );
+
+  for (const [pathAction, action] of [["check-in", "CHECK_IN"], ["check-out", "CHECK_OUT"]]) {
+    router.post(
+      `/staff/bookings/:bookingId/${pathAction}-settlement`,
+      authenticate,
+      requireRoles("reception", "superadmin"),
+      uploadOptionalProof,
+      asyncHandler(async (request, response) => {
+        const result = await service.settleStay(
+          request.params.bookingId, action, request.body, request.file, request.principal
+        );
+        response.status(result.replayed ? 200 : 201).json({
+          data: result.data,
+          meta: { replayed: result.replayed }
+        });
+      })
+    );
+  }
 
   router.get(
     "/accounting/financial-summary",

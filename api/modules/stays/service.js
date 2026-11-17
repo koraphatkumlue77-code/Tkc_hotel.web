@@ -11,6 +11,13 @@ export class StaysService {
     this.repository = repository;
   }
 
+  listAvailableRooms(bookingIdValue, bookingRoomIdValue) {
+    return this.repository.listAvailableRooms(
+      routeId(bookingIdValue, "bookingId"),
+      routeId(bookingRoomIdValue, "bookingRoomId")
+    );
+  }
+
   assign(bookingId, body, principal) {
     return this.repository.assign(routeId(bookingId, "bookingId"), validateAssignment(body), principal);
   }

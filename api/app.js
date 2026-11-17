@@ -84,8 +84,10 @@ export function createApp({ checkDatabase, publicRoot, pool, authConfig, storage
 
   if (publicRoot) {
     const sendPublicFile = (fileName) => (_request, response, next) => {
+      response.set("Cache-Control", "no-store, max-age=0");
       response.sendFile(path.join(publicRoot, fileName), {
-        dotfiles: "deny"
+        dotfiles: "deny",
+        cacheControl: false
       }, (error) => {
         if (error) next(error);
       });

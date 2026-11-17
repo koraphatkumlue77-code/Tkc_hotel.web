@@ -241,7 +241,8 @@ export class PaymentsRepository {
       `, [bookingId]);
       const booking = bookingRows[0];
       const [paymentRows] = await connection.execute(`
-        SELECT payment_id AS id, status, verified_by AS verifiedBy,
+        SELECT payment_id AS id, transaction_type AS transactionType,
+               status, verified_by AS verifiedBy,
                verified_at AS verifiedAt, rejection_reason AS rejectionReason
         FROM Payment WHERE payment_id = ? FOR UPDATE
       `, [paymentId]);
@@ -254,7 +255,13 @@ export class PaymentsRepository {
           replayed: true
         };
       }
-      if (payment.status !== "SUBMITTED" || booking.status !== "PAYMENT_REVIEW") {
+      const staySettlement = ["BALANCE", "SERVICE_PAYMENT"].includes(payment.transactionType)
+        && ["CHECKED_IN", "CHECKED_OUT"].includes(booking.status);
+      const cancelledBookingPayment = booking.status === "CANCELLED"
+        && ["PAYMENT", "DEPOSIT", "FULL_PAYMENT"].includes(payment.transactionType);
+      const shouldTransitionBooking = !staySettlement && !cancelledBookingPayment;
+      if (payment.status !== "SUBMITTED"
+          || (!staySettlement && !cancelledBookingPayment && booking.status !== "PAYMENT_REVIEW")) {
         throw new ApiError(409, "PAYMENT_DECISION_CONFLICT", "Payment has already been decided");
       }
 
@@ -264,12 +271,14 @@ export class PaymentsRepository {
           SET status = 'VERIFIED', verified_by = ?, verified_at = CURRENT_TIMESTAMP
           WHERE payment_id = ?
         `, [employeeId, paymentId]);
-        await connection.execute(`
-          UPDATE Booking
-          SET status = 'CONFIRMED', status_changed_at = CURRENT_TIMESTAMP,
-              status_changed_by = ?, hold_expires_at = NULL
-          WHERE booking_id = ?
-        `, [employeeId, bookingId]);
+        if (shouldTransitionBooking) {
+          await connection.execute(`
+            UPDATE Booking
+            SET status = 'CONFIRMED', status_changed_at = CURRENT_TIMESTAMP,
+                status_changed_by = ?, hold_expires_at = NULL
+            WHERE booking_id = ?
+          `, [employeeId, bookingId]);
+        }
       } else {
         await connection.execute(`
           UPDATE Payment
@@ -277,13 +286,15 @@ export class PaymentsRepository {
               rejection_reason = ?
           WHERE payment_id = ?
         `, [employeeId, reason, paymentId]);
-        await connection.execute(`
-          UPDATE Booking
-          SET status = 'PENDING_PAYMENT', status_changed_at = CURRENT_TIMESTAMP,
-              status_changed_by = ?,
-              hold_expires_at = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
-          WHERE booking_id = ?
-        `, [employeeId, bookingId]);
+        if (shouldTransitionBooking) {
+          await connection.execute(`
+            UPDATE Booking
+            SET status = 'PENDING_PAYMENT', status_changed_at = CURRENT_TIMESTAMP,
+                status_changed_by = ?,
+                hold_expires_at = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 30 MINUTE)
+            WHERE booking_id = ?
+          `, [employeeId, bookingId]);
+        }
       }
       const [[afterPayment]] = await connection.execute(`
         SELECT payment_id AS id, status, verified_by AS verifiedBy,
@@ -303,15 +314,29 @@ export class PaymentsRepository {
         after: { status: afterPayment.status },
         reason
       });
-      await writeAudit(connection, {
-        entityType: "Booking",
-        entityId: bookingId,
-        action: decision === "VERIFIED" ? "BOOKING_CONFIRMED" : "PAYMENT_RETRY_OPENED",
-        actor: { type: "employee", id: employeeId },
-        before: { status: booking.status },
-        after: { status: afterBooking.status, holdExpiresAt: afterBooking.holdExpiresAt },
-        reason
-      });
+      if (shouldTransitionBooking) {
+        await writeAudit(connection, {
+          entityType: "Booking",
+          entityId: bookingId,
+          action: decision === "VERIFIED" ? "BOOKING_CONFIRMED" : "PAYMENT_RETRY_OPENED",
+          actor: { type: "employee", id: employeeId },
+          before: { status: booking.status },
+          after: { status: afterBooking.status, holdExpiresAt: afterBooking.holdExpiresAt },
+          reason
+        });
+      } else if (cancelledBookingPayment) {
+        await writeAudit(connection, {
+          entityType: "Booking",
+          entityId: bookingId,
+          action: decision === "VERIFIED"
+            ? "CANCELLED_BOOKING_PAYMENT_VERIFIED"
+            : "CANCELLED_BOOKING_PAYMENT_REJECTED",
+          actor: { type: "employee", id: employeeId },
+          before: { status: "CANCELLED", paymentStatus: payment.status },
+          after: { status: "CANCELLED", paymentStatus: afterPayment.status },
+          reason
+        });
+      }
       await connection.commit();
       return {
         data: decisionResponse(paymentId, bookingId, afterPayment, afterBooking),
@@ -404,6 +429,152 @@ export class PaymentsRepository {
     }
   }
 
+  async previewSettlement({ bookingCode, action }) {
+    const [rows] = await this.pool.execute(`${settlementSelect()}
+      WHERE b.booking_code = ? LIMIT 1`, [bookingCode]);
+    if (!rows[0]) throw new ApiError(404, "BOOKING_NOT_FOUND", "Booking was not found");
+    const booking = settlementRecord(rows[0], action);
+    validateSettlementState(booking, action);
+    const [rooms] = await this.pool.execute(`
+      SELECT br.booking_room_id AS bookingRoomId, br.room_type_id AS roomTypeId,
+             br.guest_count AS guestCount, r.room_id AS id,
+             r.room_code AS roomCode, r.current_status AS status,
+             rt.type_name AS roomType
+      FROM BookingRoom br
+      LEFT JOIN RoomAssignment ra ON ra.assignment_id = (
+        SELECT MAX(candidate.assignment_id) FROM RoomAssignment candidate
+        WHERE candidate.booking_room_id = br.booking_room_id
+          AND candidate.effective_to > candidate.effective_from
+      )
+      LEFT JOIN Room r ON r.room_id = ra.room_id
+      LEFT JOIN RoomType rt ON rt.room_type_id = br.room_type_id
+      WHERE br.booking_id = ? ORDER BY br.booking_room_id
+    `, [booking.id]);
+    return { ...booking, rooms: rooms.map(roomRecord) };
+  }
+
+  async settleStay({ bookingId, action, employeeId, method, reference, idempotencyKey, proofReference }) {
+    const connection = await this.pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [bookingRows] = await connection.execute(`${settlementSelect()}
+        WHERE b.booking_id = ? FOR UPDATE`, [bookingId]);
+      if (!bookingRows[0]) throw new ApiError(404, "BOOKING_NOT_FOUND", "Booking was not found");
+      const booking = settlementRecord(bookingRows[0], action);
+
+      const [replayRows] = idempotencyKey ? await connection.execute(`
+        SELECT payment_id AS id, auto_check_result AS resultData
+        FROM Payment WHERE idempotency_key = ? FOR UPDATE
+      `, [idempotencyKey]) : [[]];
+      if (replayRows[0]) {
+        let stored;
+        try { stored = JSON.parse(replayRows[0].resultData); } catch { stored = null; }
+        if (!stored || stored.action !== action
+            || Number(stored.data?.booking?.id) !== bookingId) {
+          throw new ApiError(409, "IDEMPOTENCY_CONFLICT", "Idempotency key was used for different settlement input");
+        }
+        await connection.commit();
+        return { data: stored.data, replayed: true };
+      }
+
+      validateSettlementState(booking, action);
+      if (action === "CHECK_IN") {
+        const today = bangkokDate(new Date());
+        if (today < booking.checkIn || today >= booking.checkOut) {
+          throw new ApiError(409, "CHECK_IN_DATE_INVALID", "Check-in is outside the booked stay");
+        }
+      }
+      const assignments = await lockSettlementAssignments(connection, bookingId);
+      if (assignments.length !== booking.roomCount
+          || new Set(assignments.map(({ bookingRoomId }) => bookingRoomId)).size !== booking.roomCount) {
+        throw new ApiError(409, "ROOM_ASSIGNMENT_INCOMPLETE", "Every booked room must have one active assignment");
+      }
+      const expectedRoomStatus = action === "CHECK_IN" ? "AVAILABLE" : "OCCUPIED";
+      if (assignments.some(({ status }) => status !== expectedRoomStatus)) {
+        throw new ApiError(409, "ROOM_ASSIGNMENT_CONFLICT", "Assigned room status does not match this action");
+      }
+
+      const amount = action === "CHECK_IN" ? booking.roomDue : booking.serviceDue;
+      const amountCents = decimalToCents(amount);
+      let payment = null;
+      if (amountCents > 0) {
+        if (!method || !idempotencyKey || !proofReference) {
+          throw new ApiError(400, "PAYMENT_DETAILS_REQUIRED", "Payment details and proof are required when a balance is due");
+        }
+        const transactionType = action === "CHECK_IN" ? "BALANCE" : "SERVICE_PAYMENT";
+        const [insert] = await connection.execute(`
+          INSERT INTO Payment
+            (booking_id, transaction_type, direction, method, amount,
+             status, proof_reference, submitted_at, auto_check_result, idempotency_key)
+          VALUES (?, ?, 'IN', ?, ?, 'SUBMITTED', ?, CURRENT_TIMESTAMP, '{}', ?)
+        `, [bookingId, transactionType, method, amount, proofReference, idempotencyKey]);
+        const reference = `SYS-PAY-${insert.insertId}`;
+        payment = {
+          id: Number(insert.insertId), bookingId, transactionType, method,
+          amount, status: "SUBMITTED", proofReference, reference
+        };
+      }
+
+      const nextStatus = action === "CHECK_IN" ? "CHECKED_IN" : "CHECKED_OUT";
+      const roomStatus = action === "CHECK_IN" ? "OCCUPIED" : "NEEDS_CLEANING";
+      for (const assignment of assignments) {
+        if (action === "CHECK_OUT") {
+          await connection.execute(
+            "UPDATE RoomAssignment SET effective_to = CURRENT_TIMESTAMP WHERE assignment_id = ?",
+            [assignment.assignmentId]
+          );
+          await connection.execute(`
+            INSERT INTO RoomEvent
+              (room_id, booking_room_id, event_type, status, employee_id, reason)
+            VALUES (?, ?, 'CLEANING_QUEUED', 'QUEUED', ?, 'Guest checked out')
+          `, [assignment.id, assignment.bookingRoomId, employeeId]);
+        }
+        await connection.execute(`
+          UPDATE Room SET current_status = ?, status_changed_at = CURRENT_TIMESTAMP,
+            status_changed_by = ?, status_reason = ?, status_version = status_version + 1
+          WHERE room_id = ?
+        `, [roomStatus, employeeId, action === "CHECK_IN" ? "Guest checked in" : "Guest checked out", assignment.id]);
+      }
+      const actionColumn = action === "CHECK_IN"
+        ? "actual_check_in_at = CURRENT_TIMESTAMP, checked_in_by"
+        : "actual_check_out_at = CURRENT_TIMESTAMP, checked_out_by";
+      await connection.execute(`
+        UPDATE Booking SET status = ?, status_changed_at = CURRENT_TIMESTAMP,
+          status_changed_by = ?, ${actionColumn} = ? WHERE booking_id = ?
+      `, [nextStatus, employeeId, employeeId, bookingId]);
+      const data = {
+        payment,
+        booking: { id: bookingId, code: booking.bookingCode, status: nextStatus },
+        rooms: assignments.map((room) => ({ id: room.id, roomCode: room.roomCode, status: roomStatus }))
+      };
+      if (payment) {
+        await connection.execute(
+          "UPDATE Payment SET auto_check_result = ? WHERE payment_id = ?",
+          [JSON.stringify({ action, reference: payment.reference, data }), payment.id]
+        );
+        await writeAudit(connection, {
+          entityType: "Payment", entityId: payment.id, action: "SETTLEMENT_SUBMITTED",
+          actor: { type: "employee", id: employeeId }, after: payment
+        });
+      }
+      await writeAudit(connection, {
+        entityType: "Booking", entityId: bookingId, action: nextStatus,
+        actor: { type: "employee", id: employeeId },
+        before: { status: booking.status }, after: data
+      });
+      await connection.commit();
+      return { data, replayed: false };
+    } catch (error) {
+      await connection.rollback();
+      if (error?.code === "ER_DUP_ENTRY") {
+        throw new ApiError(409, "IDEMPOTENCY_CONFLICT", "Idempotency key was already used");
+      }
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
   async financialSummary({ from, to }) {
     const connection = await this.pool.getConnection();
     let previousTimeZone;
@@ -466,6 +637,95 @@ async function acceptedIncomingCents(connection, bookingId) {
       AND status IN ('VERIFIED', 'APPROVED', 'COMPLETED')
   `, [bookingId]);
   return decimalToCents(row.paid);
+}
+
+function settlementSelect() {
+  return `SELECT b.booking_id AS id, b.booking_code AS bookingCode, b.status,
+                 DATE_FORMAT(b.check_in_date, '%Y-%m-%d') AS checkIn,
+                 DATE_FORMAT(b.check_out_date, '%Y-%m-%d') AS checkOut,
+                 CAST(b.room_subtotal_snapshot AS CHAR) AS roomSubtotal,
+                 CAST(b.discount_total_snapshot AS CHAR) AS discountTotal,
+                 CAST(b.service_subtotal_snapshot AS CHAR) AS serviceSubtotal,
+                 c.full_name AS customerName, c.phone AS customerPhone,
+                 (SELECT COUNT(*) FROM BookingRoom br WHERE br.booking_id = b.booking_id) AS roomCount,
+                 CAST(COALESCE((SELECT SUM(p.amount) FROM Payment p
+                   WHERE p.booking_id = b.booking_id AND p.direction = 'IN'
+                     AND p.status IN ('VERIFIED', 'APPROVED', 'COMPLETED')
+                     AND p.transaction_type <> 'SERVICE_PAYMENT'), 0) AS CHAR) AS roomPaid,
+                 CAST(COALESCE((SELECT SUM(p.amount) FROM Payment p
+                   WHERE p.booking_id = b.booking_id AND p.direction = 'IN'
+                     AND p.status IN ('VERIFIED', 'APPROVED', 'COMPLETED')
+                     AND p.transaction_type = 'SERVICE_PAYMENT'), 0) AS CHAR) AS servicePaid
+          FROM Booking b JOIN Customer c ON c.customer_id = b.customer_id`;
+}
+
+function settlementRecord(row, action) {
+  const roomNetCents = Math.max(0,
+    decimalToCents(row.roomSubtotal ?? "0") - decimalToCents(row.discountTotal ?? "0"));
+  const roomDueCents = Math.max(0, roomNetCents - decimalToCents(row.roomPaid));
+  const serviceDueCents = Math.max(0,
+    decimalToCents(row.serviceSubtotal ?? "0") - decimalToCents(row.servicePaid));
+  return {
+    id: Number(row.id), bookingCode: row.bookingCode, status: row.status,
+    checkIn: row.checkIn, checkOut: row.checkOut, roomCount: Number(row.roomCount),
+    customer: { name: row.customerName, phone: row.customerPhone },
+    roomDue: centsToDecimal(roomDueCents), serviceDue: centsToDecimal(serviceDueCents),
+    amountDue: centsToDecimal(action === "CHECK_IN" ? roomDueCents : serviceDueCents)
+  };
+}
+
+function validateSettlementState(booking, action) {
+  const allowed = action === "CHECK_IN"
+    ? ["CONFIRMED", "LATE_ARRIVAL"]
+    : ["CHECKED_IN"];
+  if (!allowed.includes(booking.status)) {
+    const message = action === "CHECK_IN"
+      ? booking.status === "CHECKED_IN"
+        ? "This booking has already been checked in"
+        : `Booking cannot be checked in while its status is ${booking.status}`
+      : booking.status === "CHECKED_OUT"
+        ? "This booking has already been checked out"
+        : `Booking cannot be checked out while its status is ${booking.status}`;
+    throw new ApiError(409, "BOOKING_TRANSITION_INVALID",
+      message);
+  }
+}
+
+async function lockSettlementAssignments(connection, bookingId) {
+  const [rows] = await connection.execute(`
+    SELECT ra.assignment_id AS assignmentId, ra.booking_room_id AS bookingRoomId,
+           r.room_id AS id, r.room_code AS roomCode, r.current_status AS status
+    FROM BookingRoom br
+    JOIN RoomAssignment ra ON ra.assignment_id = (
+      SELECT MAX(candidate.assignment_id) FROM RoomAssignment candidate
+      WHERE candidate.booking_room_id = br.booking_room_id
+        AND candidate.effective_to > candidate.effective_from
+    )
+    JOIN Room r ON r.room_id = ra.room_id
+    WHERE br.booking_id = ? ORDER BY br.booking_room_id FOR UPDATE
+  `, [bookingId]);
+  return rows.map((row) => ({
+    assignmentId: Number(row.assignmentId), bookingRoomId: Number(row.bookingRoomId),
+    id: Number(row.id), roomCode: row.roomCode, status: row.status
+  }));
+}
+
+function roomRecord(row) {
+  return {
+    id: row.id == null ? null : Number(row.id),
+    bookingRoomId: Number(row.bookingRoomId),
+    roomTypeId: Number(row.roomTypeId),
+    roomType: row.roomType,
+    guestCount: Number(row.guestCount),
+    roomCode: row.roomCode,
+    status: row.status
+  };
+}
+
+function bangkokDate(value) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit"
+  }).format(value);
 }
 
 function receiptRecord(row, totalCents, paidCents) {
@@ -571,7 +831,8 @@ async function lockInventory(connection, typeIds) {
 async function lockOwnedBooking(connection, bookingId, customerId) {
   const [rows] = await connection.execute(`
     SELECT booking_id AS id, status,
-           CAST(total_snapshot AS CHAR) AS total,
+           CAST(room_subtotal_snapshot AS CHAR) AS roomSubtotal,
+           CAST(discount_total_snapshot AS CHAR) AS discountTotal,
            CAST(deposit_rate AS CHAR) AS depositRate,
            (hold_expires_at > CURRENT_TIMESTAMP) AS holdActive
     FROM Booking
@@ -583,7 +844,8 @@ async function lockOwnedBooking(connection, bookingId, customerId) {
 }
 
 function expectedInitialPayment(booking) {
-  const totalCents = decimalToCents(booking.total);
+  const totalCents = Math.max(0,
+    decimalToCents(booking.roomSubtotal ?? "0") - decimalToCents(booking.discountTotal ?? "0"));
   if (totalCents === 0) {
     throw new ApiError(409, "BOOKING_PAYMENT_NOT_REQUIRED", "Booking does not require payment");
   }

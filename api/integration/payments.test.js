@@ -67,6 +67,128 @@ test("customer submits server-priced proof and same idempotency key replays with
   }
 });
 
+test("initial deposit excludes service charges deferred to Check-out", async () => {
+  const fixture = await createFixture();
+  try {
+    const owner = await fixture.register("payment.room-only@example.test", "PAY-ROOM-ONLY");
+    const booking = await fixture.createBooking(owner, "PAY-ROOM-ONLY-BOOK");
+    await fixture.pool.execute(`
+      UPDATE Booking SET service_subtotal_snapshot = 600, total_snapshot = 1600
+      WHERE booking_id = ?
+    `, [booking.id]);
+    const proof = await fixture.uploadProof(owner, booking.id, "room-only-deposit", PNG);
+    assert.equal(proof.response.status, 201);
+    assert.equal(proof.body.data.amount, "200.00");
+  } finally {
+    await fixture.close();
+  }
+});
+
+test("Reception settles room at Check-in and services at Check-out atomically", async () => {
+  const fixture = await createFixture();
+  try {
+    const owner = await fixture.register("payment.settlement@example.test", "PAY-SETTLEMENT");
+    const booking = await fixture.createBooking(owner, "PAY-SETTLEMENT-BOOK");
+    const reception = await fixture.employee("payment.settlement.reception@example.test", "RECEPTION");
+    const accounting = await fixture.employee("payment.settlement.accounting@example.test", "ACCOUNTING");
+    const [[receptionEmployee]] = await fixture.pool.execute(
+      "SELECT employee_id AS id FROM Employee WHERE email = ?",
+      ["payment.settlement.reception@example.test"]
+    );
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit"
+    }).format(new Date());
+    const tomorrow = new Date(`${today}T00:00:00Z`);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    await fixture.pool.execute(`
+      UPDATE Booking SET status = 'CONFIRMED', check_in_date = ?, check_out_date = ?,
+        room_subtotal_snapshot = 1000, service_subtotal_snapshot = 600,
+        discount_total_snapshot = 0, total_snapshot = 1600, hold_expires_at = NULL
+      WHERE booking_id = ?
+    `, [today, tomorrow.toISOString().slice(0, 10), booking.id]);
+    await fixture.pool.execute(`
+      INSERT INTO Payment
+        (booking_id, transaction_type, direction, method, amount, status, submitted_at, verified_at)
+      VALUES (?, 'DEPOSIT', 'IN', 'BANK_TRANSFER', 200, 'VERIFIED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `, [booking.id]);
+    const [[bookingRoom]] = await fixture.pool.execute(
+      "SELECT booking_room_id AS id, room_type_id AS roomTypeId FROM BookingRoom WHERE booking_id = ?",
+      [booking.id]
+    );
+    const [[room]] = await fixture.pool.execute(
+      "SELECT room_id AS id FROM Room WHERE room_type_id = ? AND current_status = 'AVAILABLE' ORDER BY room_id LIMIT 1",
+      [bookingRoom.roomTypeId]
+    );
+    await fixture.pool.execute(`
+      INSERT INTO RoomAssignment
+        (booking_room_id, room_id, assigned_by, effective_from, effective_to, reason)
+      VALUES (?, ?, ?, ?, ?, 'Settlement test')
+    `, [bookingRoom.id, room.id, receptionEmployee.id, today, tomorrow.toISOString().slice(0, 10)]);
+
+    const checkInPreview = await fixture.getJson(
+      reception,
+      `/api/staff/settlements/preview?bookingCode=${encodeURIComponent(booking.bookingCode)}&action=CHECK_IN`
+    );
+    assert.equal(checkInPreview.response.status, 200);
+    assert.equal(checkInPreview.body.data.amountDue, "800.00");
+    assert.equal(checkInPreview.body.data.serviceDue, "600.00");
+
+    const checkedIn = await fixture.uploadSettlement(
+      reception, booking.id, "check-in", "SETTLE-IN-1", "RECEIPT-IN-001", PNG
+    );
+    assert.equal(checkedIn.response.status, 201);
+    assert.equal(checkedIn.body.data.payment.amount, "800.00");
+    assert.equal(checkedIn.body.data.payment.status, "SUBMITTED");
+    assert.equal(checkedIn.body.data.booking.status, "CHECKED_IN");
+    assert.deepEqual(checkedIn.body.data.rooms.map(({ status }) => status), ["OCCUPIED"]);
+
+    const approvedCheckIn = await fixture.postJson(
+      accounting, `/api/accounting/payments/${checkedIn.body.data.payment.id}/approve`, {}
+    );
+    assert.equal(approvedCheckIn.response.status, 200);
+    assert.equal(approvedCheckIn.body.data.payment.status, "VERIFIED");
+    assert.equal(approvedCheckIn.body.data.booking.status, "CHECKED_IN");
+
+    const checkOutPreview = await fixture.getJson(
+      reception,
+      `/api/staff/settlements/preview?bookingCode=${encodeURIComponent(booking.bookingCode)}&action=CHECK_OUT`
+    );
+    assert.equal(checkOutPreview.response.status, 200);
+    assert.equal(checkOutPreview.body.data.amountDue, "600.00");
+
+    const checkedOut = await fixture.uploadSettlement(
+      reception, booking.id, "check-out", "SETTLE-OUT-1", "RECEIPT-OUT-001", PNG
+    );
+    assert.equal(checkedOut.response.status, 201);
+    assert.equal(checkedOut.body.data.payment.transactionType, "SERVICE_PAYMENT");
+    assert.equal(checkedOut.body.data.payment.amount, "600.00");
+    assert.equal(checkedOut.body.data.payment.status, "SUBMITTED");
+    assert.equal(checkedOut.body.data.booking.status, "CHECKED_OUT");
+    assert.deepEqual(checkedOut.body.data.rooms.map(({ status }) => status), ["NEEDS_CLEANING"]);
+    const approvedCheckOut = await fixture.postJson(
+      accounting, `/api/accounting/payments/${checkedOut.body.data.payment.id}/approve`, {}
+    );
+    assert.equal(approvedCheckOut.response.status, 200);
+    assert.equal(approvedCheckOut.body.data.payment.status, "VERIFIED");
+    assert.equal(approvedCheckOut.body.data.booking.status, "CHECKED_OUT");
+    const [[stored]] = await fixture.pool.execute(`
+      SELECT b.status, r.current_status AS roomStatus,
+        JSON_UNQUOTE(JSON_EXTRACT(p.auto_check_result, '$.reference')) AS referenceNumber
+      FROM Booking b
+      JOIN BookingRoom br ON br.booking_id = b.booking_id
+      JOIN RoomAssignment ra ON ra.booking_room_id = br.booking_room_id
+      JOIN Room r ON r.room_id = ra.room_id
+      JOIN Payment p ON p.booking_id = b.booking_id AND p.transaction_type = 'SERVICE_PAYMENT'
+      WHERE b.booking_id = ? ORDER BY p.payment_id DESC LIMIT 1
+    `, [booking.id]);
+    assert.deepEqual(stored, {
+      status: "CHECKED_OUT", roomStatus: "NEEDS_CLEANING", referenceNumber: "RECEIPT-OUT-001"
+    });
+  } finally {
+    await fixture.close();
+  }
+});
+
 test("proof submission enforces ownership, live hold, state, and cancellation review lock", async () => {
   const fixture = await createFixture();
   try {
@@ -575,6 +697,19 @@ async function createFixture() {
       form.append("idempotencyKey", idempotencyKey);
       form.append("proof", new Blob([bytes], { type: "image/png" }), "replacement.png");
       const response = await fetch(`${baseUrl}/api/bookings/${bookingId}/payment-proof/resubmit`, {
+        method: "POST",
+        headers: { Origin: baseUrl, Cookie: cookie },
+        body: form
+      });
+      return { response, body: await response.json() };
+    },
+    async uploadSettlement(cookie, bookingId, action, idempotencyKey, reference, bytes) {
+      const form = new FormData();
+      form.append("method", "BANK_TRANSFER");
+      form.append("reference", reference);
+      form.append("idempotencyKey", idempotencyKey);
+      form.append("proof", new Blob([bytes], { type: "image/png" }), "settlement.png");
+      const response = await fetch(`${baseUrl}/api/staff/bookings/${bookingId}/${action}-settlement`, {
         method: "POST",
         headers: { Origin: baseUrl, Cookie: cookie },
         body: form

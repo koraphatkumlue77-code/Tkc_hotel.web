@@ -13,7 +13,7 @@ const MIME_EXTENSIONS = new Map([
   ["image/webp", ".webp"]
 ]);
 
-export function createProofUpload({ storageRoot }) {
+export function createProofUpload({ storageRoot, required = true }) {
   const receive = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: MAX_PROOF_BYTES, files: 1 },
@@ -34,7 +34,9 @@ export function createProofUpload({ storageRoot }) {
         }
         if (error) throw error;
         if (!request.file) {
-          throw new ApiError(400, "PROOF_REQUIRED", "A proof image is required");
+          if (required) throw new ApiError(400, "PROOF_REQUIRED", "A proof image is required");
+          next();
+          return;
         }
         const detectedMime = detectImageMime(request.file.buffer);
         if (detectedMime !== request.file.mimetype) {

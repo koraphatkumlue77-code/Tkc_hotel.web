@@ -154,7 +154,7 @@
             <div class="facility-content">
               <small class="facility-tag">FITNESS CENTER</small>
               <h3>ฟิตเนส</h3>
-              <p class="facility-desc">เปิดบริการตั้งแต่เวลา 07:00 - 21:30 น.</p>
+              <p class="facility-desc">500 บาท/คน ซื้อสิทธิ์ครั้งเดียว ใช้ได้ตลอดการเข้าพัก</p>
               <div class="facility-time"><svg><use href="#calendar"/></svg><span>สามารถเลือกวันและเวลา</span></div>
               <button class="facility-btn" data-facility="fitness">จอง</button>
             </div>
@@ -165,7 +165,7 @@
             <div class="facility-content">
               <small class="facility-tag">SUANA</small>
               <h3>ซาวน่า</h3>
-              <p class="facility-desc">เปิดบริการตั้งแต่เวลา 07:00 - 21:30 น.</p>
+              <p class="facility-desc">300 บาท/คน ซื้อสิทธิ์ครั้งเดียว ใช้ได้ตลอดการเข้าพัก</p>
               <div class="facility-time"><svg><use href="#calendar"/></svg><span>สามารถเลือกวันและเวลา</span></div>
               <button class="facility-btn" data-facility="sauna">จอง</button>
             </div>
@@ -453,6 +453,25 @@
         </div>
 
         <div class="admin-card" id="shared-booking-history-superadmin"></div>
+
+        <div class="admin-card reception-chat-card">
+          <div class="admin-card-header">
+            <div><h3>แชตกับลูกค้า</h3><select id="superadmin-chat-customer" aria-label="เลือกลูกค้าที่สนทนา"></select></div>
+          </div>
+          <div class="rec-chat-messages" id="superadmin-chat-box" role="log" aria-live="polite"></div>
+            <form class="rec-chat-form" id="superadmin-chat-form" data-staff-chat-form>
+            <input type="text" id="superadmin-chat-input" placeholder="พิมพ์ข้อความตอบกลับ..." required autocomplete="off">
+            <button type="submit" class="rec-send-btn" aria-label="ส่งข้อความ"><svg><use href="#send"/></svg></button>
+          </form>
+        </div>
+
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <div><h3>จัดการรีวิว</h3><p>ซ่อนรีวิวที่ไม่ต้องการให้แสดงบนหน้าเว็บ</p></div>
+            <button type="button" class="booking-outline" id="refresh-review-moderation">รีเฟรช</button>
+          </div>
+          <div id="superadmin-review-list" class="review-moderation-list"><p>กำลังโหลดรีวิว...</p></div>
+        </div>
       </section>
 
       <!-- ==================== 2. แดชบอร์ด ฝ่ายต้อนรับ ==================== -->
@@ -477,13 +496,19 @@
 
         <div class="admin-card">
           <div class="admin-card-header">
-            <div><h3>บันทึกรับชำระเงิน</h3><p>ยอดรับจริงจะตรวจสอบกับยอดคงเหลือในฐานข้อมูล</p></div>
+            <div><h3>Check-in / Check-out และรับชำระเงิน</h3><p>ค้นหาด้วยรหัสการจอง ระบบจะคำนวณยอดที่ต้องรับให้อัตโนมัติ</p></div>
           </div>
           <form id="reception-payment-form" class="staff-inline-form">
-            <label>รหัสรายการจอง<input name="bookingId" type="number" min="1" required placeholder="เช่น 24"></label>
-            <label>ยอดรับ<input name="amount" inputmode="decimal" required placeholder="0.00"></label>
-            <label>วิธีชำระ<select name="method"><option value="CASH">เงินสด</option><option value="BANK_TRANSFER">โอนธนาคาร</option><option value="CARD">บัตร</option></select></label>
-            <button type="submit" class="btn-dark-pill">บันทึกรับเงิน</button>
+            <label>รหัสการจอง<input name="bookingCode" required maxlength="20" placeholder="เช่น TKC-XXXXXX"></label>
+            <label>รายการ<select name="settlementAction"><option value="CHECK_IN">Check-in</option><option value="CHECK_OUT">Check-out</option></select></label>
+            <button type="button" class="booking-outline" id="reception-settlement-preview">ตรวจสอบยอด</button>
+            <div id="reception-settlement-summary" class="settlement-summary"><span>กรอกรหัสการจองแล้วกดตรวจสอบยอด</span></div>
+            <div id="reception-settlement-room-choices" class="settlement-room-choices" hidden></div>
+            <div id="reception-settlement-payment-fields" class="settlement-payment-fields" hidden>
+              <label>วิธีชำระ<select name="method" required disabled><option value="CASH">เงินสด</option><option value="BANK_TRANSFER">โอนธนาคาร</option><option value="CARD">บัตร</option></select></label>
+              <label>หลักฐานการชำระ<input name="proof" type="file" accept="image/png,image/jpeg,image/webp" required disabled></label>
+            </div>
+            <button id="reception-settlement-submit" type="submit" class="btn-dark-pill">ยืนยันและเปลี่ยนสถานะ</button>
             <p id="reception-payment-result" class="demo-note" role="status"></p>
           </form>
         </div>
@@ -495,7 +520,9 @@
                 <h3>สถานะห้องพักวันนี้</h3>
                 <p>ข้อมูลห้องตัวอย่าง · เช็คเอาท์แล้วจะเข้าคิวทำความสะอาด</p>
               </div>
-              <button type="button" class="btn-dark-pill" onclick="toast('แสดงรายการห้องพักทั้งหมด')">ดูรายการห้องทั้งหมด</button>
+              <label class="room-type-filter">แสดงห้อง
+                <select id="reception-room-type-filter"><option value="all">ห้องทั้งหมด</option></select>
+              </label>
             </div>
 
             <div class="room-status-counters" id="reception-room-counts">
@@ -632,7 +659,7 @@
               </div>
             </div>
 
-            <form class="rec-chat-form" id="rec-chat-form">
+            <form class="rec-chat-form" id="rec-chat-form" data-staff-chat-form>
               <input type="text" id="rec-chat-input" placeholder="พิมพ์ข้อความตอบกลับ..." required autocomplete="off">
               <button type="submit" class="rec-send-btn" aria-label="ส่งข้อความ">
                 <svg><use href="#send"/></svg>
@@ -706,15 +733,15 @@
                 <h3>ธุรกรรมการชำระเงิน</h3>
                 <p>ทุกธุรกรรมอ้างอิงรายการจองหนึ่งรายการเสมอ</p>
               </div>
-              <button type="button" class="btn-dark-pill" onclick="toast('ส่งออกรายงานการเงินเรียบร้อยแล้ว')">ส่งออกรายงาน</button>
+              <button type="button" class="booking-outline" id="refresh-accounting-payments">รีเฟรชรายการ</button>
             </div>
             <div class="admin-table-wrap">
               <table class="admin-table">
                 <thead>
-                  <tr><th>ธุรกรรม</th><th>การจอง</th><th>ลูกค้า</th><th>ประเภท</th><th>ยอดเงิน</th><th>สถานะ</th></tr>
+                  <tr><th>ธุรกรรม</th><th>การจอง</th><th>ลูกค้า</th><th>ประเภท</th><th>วิธีชำระ</th><th>ยอดเงิน</th><th>สถานะ</th></tr>
                 </thead>
                 <tbody id="accounting-payments">
-                  <tr><td colspan="6">กำลังโหลดธุรกรรมจากฐานข้อมูล...</td></tr>
+                  <tr><td colspan="7">กำลังโหลดธุรกรรมจากฐานข้อมูล...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -867,8 +894,11 @@
           <div class="admin-card-header"><h3>คิวทำความสะอาด</h3></div>
           <div id="cleaning-queue"></div>
           <form id="choose-damage-room" class="staff-actions staff-room-picker">
-            <label class="login-input-group">เลือกห้องเพื่อแจ้งความเสียหาย
-              <select name="room" id="damage-room-choice" required><option value="">เลือกห้อง</option></select>
+            <label class="login-input-group">ประเภทห้อง
+              <select id="damage-room-type-choice" required><option value="">เลือกประเภทห้อง</option></select>
+            </label>
+            <label class="login-input-group">เลขห้องที่ต้องการแจ้งความเสียหาย
+              <select name="room" id="damage-room-choice" required disabled><option value="">เลือกประเภทห้องก่อน</option></select>
             </label>
             <button type="submit" class="booking-outline">แจ้งความเสียหาย</button>
           </form>
@@ -1134,6 +1164,23 @@
       <label class="login-input-group" id="staff-temp-password">รหัสผ่านทดลอง<input name="password" type="password" minlength="8" autocomplete="new-password"></label>
       <p id="staff-account-error" class="login-error-text" role="alert" hidden></p>
       <button type="submit" class="submit-login-btn">บันทึกบัญชี</button>
+    </form>
+  </dialog>
+
+  <dialog id="staff-service-dialog" class="custom-login-modal" aria-labelledby="staff-service-title">
+    <button type="button" class="modal-circle-close" data-close aria-label="ปิด">✕</button>
+    <div class="login-header-custom"><h2 id="staff-service-title">เพิ่มบริการระหว่างเข้าพัก</h2></div>
+    <form id="staff-service-form" class="login-form-body">
+      <label class="login-input-group">บริการ<select name="serviceId" required></select></label>
+      <label class="login-input-group">ห้องพัก<select name="bookingRoomId" required></select></label>
+      <div class="staff-form-columns">
+        <label class="login-input-group">วันที่ใช้บริการ<input name="usageDate" type="date"></label>
+        <label class="login-input-group">เวลา<input name="startTime" type="time"></label>
+      </div>
+      <label class="login-input-group">จำนวนคน / รายการ<input name="quantity" type="number" min="1" value="1" required></label>
+      <p class="demo-note">ระบบจะเพิ่มค่าบริการในยอดจอง และเรียกเก็บตอน Check-out</p>
+      <p id="staff-service-status" class="login-error-text" role="status" hidden></p>
+      <button type="submit" class="submit-login-btn">บันทึกบริการเสริม</button>
     </form>
   </dialog>
 

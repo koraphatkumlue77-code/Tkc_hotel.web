@@ -80,6 +80,14 @@ test("browser payment flow uses persistent proof, review, receipt, and summary A
   assert.match(source, /\/approve/);
   assert.match(source, /\/reject/);
   assert.match(html, /id="reception-payment-form"/);
+  assert.match(html, /name="bookingCode"/);
+  assert.match(html, /name="settlementAction"/);
+  assert.match(html, /name="reference"/);
+  assert.match(html, /name="proof"/);
+  assert.match(html, /id="reception-room-type-filter"/);
+  assert.match(source, /\/api\/staff\/settlements\/preview/);
+  assert.match(source, /-settlement/);
+  assert.match(source, /roomTypeId/);
   assert.match(html, /id="accounting-financial-summary"/);
   assert.match(html, /id="executive-financial-summary"/);
   assert.doesNotMatch(source, /const demoBookings/);
@@ -96,6 +104,9 @@ test("staff booking history loads live list and detail instead of fixed sample r
   assert.match(source, /apiFetch\(`\/api\/staff\/bookings\/\$\{bookingId\}`/);
   assert.match(source, /renderStaffBookingHistory/);
   assert.match(source, /booking\.customer\.fullName/);
+  assert.match(source, /ค่าบริการที่เก็บตอน Check-out/);
+  assert.match(source, /booking\.services/);
+  assert.match(source, /booking\.tours/);
   assert.match(html, /id="reception-booking-list"/);
   assert.match(source, /#reception-booking-list/);
   assert.doesNotMatch(source, /innerHTML = getBookingHistoryHTML/);
@@ -119,6 +130,8 @@ test("facility booking uses persistent service, attraction, and tour APIs", asyn
   assert.match(source, /startTime:\s*facilityForm\.elements\.time\.value/);
   assert.match(source, /quantity:\s*Number\(facilityForm\.elements\.guests\.value\)/);
   assert.match(source, /\?\s*'ฟรี'/);
+  assert.match(source, /const confirmButton = event\.currentTarget/);
+  assert.doesNotMatch(source, /finally\s*\{\s*event\.currentTarget\.disabled/);
   assert.doesNotMatch(source, /button\.dataset\.facility === 'sunset'[\s\S]{0,300}\/api\/attractions/);
   assert.doesNotMatch(source, /ยกเลิกการจองบริการทดลองแล้ว/);
   assert.doesNotMatch(source, /ยืนยันการจองบริการทดลองแล้ว/);

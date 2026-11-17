@@ -7,6 +7,8 @@ import {
   paymentQueueQuery,
   rejectionReason,
   routeId,
+  settlementPreviewQuery,
+  settlementReceipt,
   summaryPeriod,
   verifiedReceipt
 } from "./contracts.js";
@@ -108,6 +110,27 @@ export class PaymentsService {
       employeeId: principal.id,
       ...verifiedReceipt(body)
     });
+  }
+
+  previewSettlement(query) {
+    return this.repository.previewSettlement(settlementPreviewQuery(query));
+  }
+
+  async settleStay(bookingIdValue, action, body, file, principal) {
+    try {
+      const result = await this.repository.settleStay({
+        bookingId: routeId(bookingIdValue, "bookingId"),
+        action,
+        employeeId: principal.id,
+        proofReference: file?.reference ?? null,
+        ...settlementReceipt(body ?? {})
+      });
+      if ((result.replayed || !result.data?.payment) && file) await removeUploadedProof(file);
+      return result;
+    } catch (error) {
+      if (file) await removeUploadedProof(file);
+      throw error;
+    }
   }
 
   async financialSummary(query) {

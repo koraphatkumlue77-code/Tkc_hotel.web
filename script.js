@@ -113,6 +113,11 @@ async function loadStaffBookingDetail(bookingId, prefix) {
   pane.innerHTML = '<p>กำลังโหลดรายละเอียด...</p>';
   try {
     const { data: booking } = await apiFetch(`/api/staff/bookings/${bookingId}`);
+    const serviceLines = (booking.services || []).map(item =>
+      `<div class="cost-line"><span>${escapeHtml(item.name)} · ${item.quantity} คน · ${String(item.startTime || '').slice(0, 5)} น.</span><strong>฿${money(Number(item.amount))}</strong></div>`);
+    const tourLines = (booking.tours || []).map(item =>
+      `<div class="cost-line"><span>${escapeHtml(item.name)} · ${item.quantity} คน · ${escapeHtml(item.location || '')} · ${String(item.startTime || '').slice(0, 5)} น.</span><strong>ฟรี</strong></div>`);
+    const extras = [...serviceLines, ...tourLines];
     pane.innerHTML = `
       <div class="hd-top">
         <div>
@@ -133,12 +138,16 @@ async function loadStaffBookingDetail(bookingId, prefix) {
           ${(booking.rooms || []).map(room => `<div class="cost-line"><span>${escapeHtml(room.roomTypeName)} · ${room.guestCount} คน</span><strong>${room.assignedRoomCode ? escapeHtml(room.assignedRoomCode) : 'ยังไม่จัดห้อง'}</strong></div>
             ${!room.assignedRoomId && ['reception', 'superadmin'].includes(currentStaffSession?.role) && ['CONFIRMED', 'LATE_ARRIVAL'].includes(booking.status)
               ? `<button type="button" class="booking-outline" data-assign-booking="${booking.id}" data-booking-room="${room.id}" data-room-type="${room.roomTypeId}" data-booking-prefix="${prefix}">จัดห้อง</button>` : ''}`).join('') || '<p>ไม่มีข้อมูลห้อง</p>'}
+          <h5>บริการเสริมและทริป</h5>
+          ${extras.join('') || '<p>ยังไม่มีบริการเสริมหรือทริป</p>'}
+          <div class="cost-line"><span>ค่าบริการที่เก็บตอน Check-out</span><strong>฿${money(Number(booking.serviceSubtotal))}</strong></div>
           <div class="cost-total"><span>ยอดรวม</span><strong>฿${money(Number(booking.total))}</strong></div>
         </div>
         <div><h5>สถานะปัจจุบัน</h5><p>${escapeHtml(booking.status)}</p>
           ${['reception', 'superadmin'].includes(currentStaffSession?.role) ? `<div class="staff-actions">
-            ${['CONFIRMED', 'LATE_ARRIVAL'].includes(booking.status) ? `<button type="button" class="btn-dark-pill" data-stay-action="check-in" data-stay-booking="${booking.id}" data-booking-prefix="${prefix}">Check-in</button><button type="button" class="booking-outline" data-stay-action="no-show" data-stay-booking="${booking.id}" data-booking-prefix="${prefix}">No-show</button>` : ''}
-            ${booking.status === 'CHECKED_IN' ? `<button type="button" class="btn-dark-pill" data-stay-action="check-out" data-stay-booking="${booking.id}" data-booking-prefix="${prefix}">Check-out</button>` : ''}
+            ${['CONFIRMED', 'LATE_ARRIVAL'].includes(booking.status) ? `<button type="button" class="btn-dark-pill" data-open-settlement="CHECK_IN" data-booking-code="${escapeHtml(booking.bookingCode)}">Check-in</button><button type="button" class="booking-outline" data-stay-action="no-show" data-stay-booking="${booking.id}" data-booking-prefix="${prefix}">No-show</button>` : ''}
+            ${booking.status === 'CHECKED_IN' ? `<button type="button" class="btn-dark-pill" data-open-settlement="CHECK_OUT" data-booking-code="${escapeHtml(booking.bookingCode)}">Check-out</button>` : ''}
+            ${booking.status === 'CHECKED_IN' ? `<button type="button" class="booking-outline" data-open-staff-service="${booking.id}" data-booking-prefix="${prefix}">เพิ่มบริการเสริม</button>` : ''}
           </div>` : ''}
         </div>
       </div>`;
@@ -169,8 +178,9 @@ document.addEventListener('click', async event => {
   button.disabled = true;
   try {
     if (assign) {
-      const { data: rooms } = await apiFetch('/api/staff/rooms?page=1&limit=100');
-      const compatible = rooms.filter(room => room.roomTypeId === Number(assign.dataset.roomType) && room.status === 'AVAILABLE');
+      const { data: compatible } = await apiFetch(
+        `/api/staff/bookings/${assign.dataset.assignBooking}/available-rooms?bookingRoomId=${assign.dataset.bookingRoom}`
+      );
       if (!compatible.length) throw new Error('ไม่มีห้องประเภทนี้ที่พร้อมจัด');
       const answer = window.prompt(`เลือกเลขห้อง: ${compatible.map(room => `${room.id}=${room.code}`).join(', ')}`);
       const room = compatible.find(item => item.id === Number(answer));
@@ -202,6 +212,89 @@ document.addEventListener('click', async event => {
       ? `ยังมียอดคงเหลือ ฿${money(Number(error.details?.outstanding || 0))}` : error.message);
   } finally {
     button.disabled = false;
+  }
+});
+
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-open-settlement]');
+  if (!button) return;
+  const form = $('#reception-payment-form');
+  if (!form) return;
+  form.elements.bookingCode.value = button.dataset.bookingCode;
+  form.elements.settlementAction.value = button.dataset.openSettlement;
+  form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  $('#reception-settlement-preview')?.click();
+});
+
+const staffServiceForm = $('#staff-service-form');
+let staffServiceBooking = null;
+let staffServicePrefix = 'rec';
+
+document.addEventListener('click', async event => {
+  const button = event.target.closest('[data-open-staff-service]');
+  if (!button) return;
+  button.disabled = true;
+  const status = $('#staff-service-status');
+  status.hidden = true;
+  try {
+    const [{ data: booking }, { data: services }] = await Promise.all([
+      apiFetch(`/api/staff/bookings/${button.dataset.openStaffService}`),
+      apiFetch('/api/services')
+    ]);
+    if (booking.status !== 'CHECKED_IN') throw new Error('เพิ่มบริการได้หลัง Check-in เท่านั้น');
+    const available = services.filter(service => !service.includedInRoom && !['TOUR', 'ATTRACTION'].includes(service.serviceKind));
+    if (!available.length) throw new Error('ไม่มีบริการเสริมที่เปิดใช้งาน');
+    staffServiceBooking = booking;
+    staffServicePrefix = button.dataset.bookingPrefix || 'rec';
+    staffServiceForm.elements.serviceId.replaceChildren(...available.map(service =>
+      new Option(`${service.name} · ฿${money(Number(service.defaultRate))}`, service.id)));
+    staffServiceForm.elements.bookingRoomId.replaceChildren(...booking.rooms.map(room =>
+      new Option(`${room.roomTypeName} · ${room.assignedRoomCode || 'ยังไม่ระบุห้อง'}`, room.id)));
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+    const serviceDate = staffServiceForm.elements.usageDate;
+    serviceDate.min = String(booking.checkIn).slice(0, 10);
+    serviceDate.max = shiftDay(String(booking.checkOut).slice(0, 10), -1);
+    serviceDate.value = today < serviceDate.min ? serviceDate.min : today > serviceDate.max ? serviceDate.max : today;
+    staffServiceForm.elements.quantity.value = '1';
+    $('#staff-service-dialog').showModal();
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+staffServiceForm?.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (!staffServiceBooking) return;
+  const submit = staffServiceForm.querySelector('[type="submit"]');
+  const status = $('#staff-service-status');
+  const date = staffServiceForm.elements.usageDate.value || null;
+  const time = staffServiceForm.elements.startTime.value || null;
+  submit.disabled = true;
+  status.hidden = true;
+  try {
+    const { data } = await apiFetch(`/api/staff/bookings/${staffServiceBooking.id}/services`, {
+      method: 'POST',
+      body: JSON.stringify({
+        serviceId: Number(staffServiceForm.elements.serviceId.value),
+        bookingRoomId: Number(staffServiceForm.elements.bookingRoomId.value),
+        usageDate: date,
+        startTime: time,
+        quantity: Number(staffServiceForm.elements.quantity.value),
+        method: 'CASH',
+        idempotencyKey: `STAFF-SERVICE-${staffServiceBooking.id}-${crypto.randomUUID()}`
+      })
+    });
+    $('#staff-service-dialog').close();
+    toast(`เพิ่ม${data.serviceName || 'บริการเสริม'}แล้ว ฿${money(Number(data.amount))} · ชำระตอน Check-out`);
+    await renderStaffBookingHistory(currentStaffSession?.role || 'reception');
+    await loadStaffBookingDetail(staffServiceBooking.id, staffServicePrefix);
+  } catch (error) {
+    status.textContent = error.message;
+    status.hidden = false;
+  } finally {
+    submit.disabled = false;
   }
 });
 
@@ -399,6 +492,9 @@ let customerEmail = '';
 let customerPrincipal = null;
 let pendingRoom = null;
 let bookingRooms = [];
+const reviewPromptedBookingIds = new Set();
+let reviewPromptCheckInFlight = false;
+let reviewPromptShownThisSession = false;
 
 function syncDates(checkIn, checkOut) {
   checkIn.min = today;
@@ -667,12 +763,15 @@ function renderCustomerProfile(principal) {
 function startCustomerSession(principal) {
   customerPrincipal = principal;
   customerEmail = principal.email;
+  reviewPromptedBookingIds.clear();
+  reviewPromptShownThisSession = false;
   bookingsButton.hidden = false;
   customerProfile.hidden = false;
   customerLoginButton.hidden = true;
   employeeLoginButton.hidden = true;
   renderCustomerProfile(principal);
   closeCustomerProfileMenu();
+  promptForPendingCheckoutReview();
   const room = pendingRoom;
   pendingRoom = null;
   if (room) requestAnimationFrame(() => openBooking(room));
@@ -719,8 +818,9 @@ const paymentStatuses = {
   CANCELLED: { label: 'ยกเลิกแล้ว', color: 'red-soft' }
 };
 const myBookingsList = $('#my-bookings-list');
+let myBookingsRefreshInFlight = false;
 
-function renderMyBookings(bookings) {
+function renderMyBookings(bookings, focusReviewBookingId = null) {
   myBookingsList.innerHTML = bookings.length ? bookings.map(booking => {
     const effectiveStatus = booking.effectiveStatus || booking.status;
     const status = paymentStatuses[effectiveStatus] || { label: effectiveStatus, color: 'yellow' };
@@ -751,6 +851,18 @@ function renderMyBookings(bookings) {
     const extrasBlock = extras.length
       ? `<div class="booking-extras"><strong>บริการและทริปที่จอง</strong><ul>${extras.join('')}</ul></div>`
       : '';
+    const refundStatuses = {
+      PENDING: 'ส่งคำขอคืนเงินแล้ว · รอฝ่ายบริหารอนุมัติ',
+      APPROVED: 'ฝ่ายบริหารอนุมัติแล้ว · รอจ่ายคืน',
+      REJECTED: 'คำขอคืนเงินไม่ผ่านการอนุมัติ',
+      COMPLETED: 'คืนเงินเรียบร้อยแล้ว'
+    };
+    const refundsBlock = (booking.refunds || []).length
+      ? `<div class="booking-refunds"><strong>สถานะการคืนเงิน</strong>${booking.refunds.map(refund => `
+          <p>฿${money(Number(refund.amount))} · ${refundStatuses[refund.status] || escapeHtml(refund.status)}</p>
+          ${refund.rejectionReason ? `<small>เหตุผล: ${escapeHtml(refund.rejectionReason)}</small>` : ''}
+        `).join('')}</div>`
+      : '';
     return `
       <article class="customer-booking-card">
         <div class="customer-booking-heading">
@@ -766,9 +878,14 @@ function renderMyBookings(bookings) {
           <div><dt>ชำระแล้ว</dt><dd>${money(Number(booking.payment.paid))} บาท</dd></div>
           <div><dt>ยอดคงเหลือ</dt><dd>${money(Number(booking.payment.outstanding))} บาท</dd></div>
         </dl>
+        ${refundsBlock}
+        ${effectiveStatus === 'CHECKED_IN' ? `<div class="staff-actions booking-service-actions">
+          <button type="button" class="booking-outline" data-booking-facility="fitness" data-booking-id="${booking.id}">จองฟิตเนส</button>
+          <button type="button" class="booking-outline" data-booking-facility="sauna" data-booking-id="${booking.id}">จองซาวน่า</button>
+        </div>` : ''}
         ${paymentForm}
-        ${['PENDING_PAYMENT', 'CONFIRMED', 'LATE_ARRIVAL'].includes(booking.status)
-          ? `<button type="button" class="booking-outline" data-cancel-booking="${booking.id}">ยกเลิกการจอง</button>` : ''}
+        ${['PENDING_PAYMENT', 'PAYMENT_REVIEW', 'CONFIRMED', 'LATE_ARRIVAL'].includes(effectiveStatus)
+          ? `<button type="button" class="booking-outline" data-cancel-booking="${booking.id}" data-cancel-payment-review="${effectiveStatus === 'PAYMENT_REVIEW'}">ยกเลิกการจอง</button>` : ''}
         ${booking.status === 'CHECKED_OUT' && !booking.review ? `
           <form data-create-review="${booking.id}" class="login-form-body">
             <label>คะแนน<select name="rating"><option value="5">5 ดาว</option><option value="4">4 ดาว</option><option value="3">3 ดาว</option><option value="2">2 ดาว</option><option value="1">1 ดาว</option></select></label>
@@ -777,26 +894,66 @@ function renderMyBookings(bookings) {
           </form>` : ''}
       </article>`;
   }).join('') : '<p>ยังไม่มีรายการจอง</p>';
+  if (focusReviewBookingId !== null) {
+    const reviewForm = myBookingsList.querySelector(`[data-create-review="${focusReviewBookingId}"]`);
+    if (reviewForm) {
+      reviewForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      reviewForm.elements.rating.focus({ preventScroll: true });
+    }
+  }
 }
 
-async function openMyBookings() {
+async function openMyBookings({ focusReviewBookingId = null } = {}) {
   if (!customerEmail) return;
+  if (myBookingsRefreshInFlight) return;
+  myBookingsRefreshInFlight = true;
   if (!$('#my-bookings-dialog').open) $('#my-bookings-dialog').showModal();
-  myBookingsList.innerHTML = '<p>กำลังโหลดรายการจองจากฐานข้อมูล...</p>';
+  if (!myBookingsList.childElementCount) myBookingsList.innerHTML = '<p>กำลังโหลดรายการจองจากฐานข้อมูล...</p>';
   try {
     const { data } = await apiFetch('/api/bookings/mine?limit=50');
     const bookings = await Promise.all(data.map(item =>
       apiFetch(`/api/bookings/${item.id}`).then(result => result.data)
     ));
-    renderMyBookings(bookings);
+    renderMyBookings(bookings, focusReviewBookingId);
   } catch (error) {
     myBookingsList.innerHTML = `<p class="login-error-text">${escapeHtml(error.message)}</p>`;
+  } finally {
+    myBookingsRefreshInFlight = false;
+  }
+}
+
+async function promptForPendingCheckoutReview() {
+  if (!customerEmail || reviewPromptCheckInFlight || reviewPromptShownThisSession) return;
+  reviewPromptCheckInFlight = true;
+  try {
+    const { data: bookings } = await apiFetch('/api/bookings/mine?limit=50');
+    const completed = bookings.find(booking =>
+      booking.status === 'CHECKED_OUT'
+      && !reviewPromptedBookingIds.has(Number(booking.id))
+    );
+    if (!completed) return;
+
+    const { data: booking } = await apiFetch(`/api/bookings/${completed.id}`);
+    if (booking.status !== 'CHECKED_OUT' || booking.review) {
+      reviewPromptedBookingIds.add(Number(completed.id));
+      return;
+    }
+    reviewPromptedBookingIds.add(Number(completed.id));
+    reviewPromptShownThisSession = true;
+    await openMyBookings({ focusReviewBookingId: Number(completed.id) });
+  } catch (error) {
+    if (error.status !== 401) console.error('Checkout review prompt failed');
+  } finally {
+    reviewPromptCheckInFlight = false;
   }
 }
 
 myBookingsList.addEventListener('click', async event => {
   const button = event.target.closest('[data-cancel-booking]');
   if (!button) return;
+  if (button.dataset.cancelPaymentReview === 'true' && !window.confirm(
+    'ยืนยันยกเลิกการจอง? หลักฐานโอนที่ส่งแล้วจะยังอยู่ในคิวบัญชี หากตรวจพบว่าได้รับเงินจริง ฝ่ายบัญชีจะดำเนินการคืนเงิน'
+  )) return;
   button.disabled = true;
   try {
     await apiFetch(`/api/bookings/${button.dataset.cancelBooking}/cancel`, {
@@ -1086,13 +1243,21 @@ const facilityLocationField = $('#facility-location-field');
 const facilityLocation = $('#facility-location');
 const facilityGuests = $('#facility-guests');
 const tourFacilityKinds = new Set(['sunset', 'market']);
+let preferredFacilityBookingId = null;
+
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-booking-facility]');
+  if (!button) return;
+  preferredFacilityBookingId = Number(button.dataset.bookingId);
+  document.querySelector(`[data-facility="${button.dataset.bookingFacility}"]`)?.click();
+});
 
 async function facilityBookingOptions(kind) {
   const { data } = await apiFetch('/api/bookings/mine?limit=50');
   const details = await Promise.all(data.map(item => apiFetch(`/api/bookings/${item.id}`).then(result => result.data)));
   const allowed = tourFacilityKinds.has(kind)
     ? ['PENDING_PAYMENT', 'PAYMENT_REVIEW', 'CONFIRMED', 'LATE_ARRIVAL', 'CHECKED_IN']
-    : ['PENDING_PAYMENT', 'CONFIRMED', 'LATE_ARRIVAL'];
+    : ['PENDING_PAYMENT', 'CONFIRMED', 'LATE_ARRIVAL', 'CHECKED_IN'];
   return details.filter(booking => allowed.includes(booking.effectiveStatus || booking.status)).flatMap(booking =>
     booking.rooms.map(room => ({
       value: `${booking.id}:${room.id}`,
@@ -1138,9 +1303,9 @@ function updateFacilityQuantity() {
   const quantity = Number(facilityGuests.value);
   const total = tourFacilityKinds.has(activeFacilityContext?.kind)
     ? 'ฟรี'
-    : `${money(Number(activeFacilityContext?.service?.defaultRate || 0) * quantity)} บาท`;
+    : `ไม่เกิน ${money(Number(activeFacilityContext?.service?.defaultRate || 0) * quantity)} บาท`;
   $('#facility-status').textContent = round
-    ? `${tourFacilityKinds.has(activeFacilityContext.kind) ? 'ทริปฟรี' : `ราคา ${money(Number(activeFacilityContext.service.defaultRate))} บาท/คน`} · เลือกได้สูงสุด ${maximum} คน · รวม ${total}`
+    ? `${tourFacilityKinds.has(activeFacilityContext.kind) ? 'ทริปฟรี' : `สิทธิ์ตลอดการเข้าพัก ${money(Number(activeFacilityContext.service.defaultRate))} บาท/คน`} · เลือกได้สูงสุด ${maximum} คน · ${total}`
     : 'ยังไม่มีรอบที่ว่างในวันที่เลือก';
 }
 
@@ -1240,6 +1405,11 @@ document.querySelectorAll('[data-facility]').forEach(button => {
         activeFacilityContext.service = service;
       }
       facilityForm.elements.booking_room.replaceChildren(...bookings.map(item => new Option(item.label, item.value)));
+      if (preferredFacilityBookingId !== null) {
+        const preferred = bookings.find(item => item.bookingId === preferredFacilityBookingId);
+        if (preferred) facilityForm.elements.booking_room.value = preferred.value;
+        preferredFacilityBookingId = null;
+      }
       await syncFacilityBookingSelection();
       $('#facility-dialog').showModal();
     } catch (error) { toast(error.message); }
@@ -1262,7 +1432,7 @@ facilityForm.addEventListener('submit', event => {
   facilityReview.querySelector('[data-facility-review="guests"]').textContent = `${selected.get('guests')} คน`;
   $('#facility-total').textContent = tourFacilityKinds.has(activeFacilityContext.kind)
     ? 'ฟรี'
-    : `${money(Number(activeFacilityContext.service.defaultRate) * Number(selected.get('guests')))} บาท`;
+    : `ไม่เกิน ${money(Number(activeFacilityContext.service.defaultRate) * Number(selected.get('guests')))} บาท (ซื้อสิทธิ์ครั้งเดียว)`;
   facilityForm.hidden = true;
   facilityReview.hidden = false;
   $('#edit-facility').focus();
@@ -1277,9 +1447,12 @@ $('#edit-facility').addEventListener('click', () => {
 $('#confirm-facility').addEventListener('click', async event => {
   const selected = activeFacilityContext?.bookings.find(item => item.value === facilityForm.elements.booking_room.value);
   if (!selected) return;
-  event.currentTarget.disabled = true;
+  const confirmButton = event.currentTarget;
+  const isTour = tourFacilityKinds.has(activeFacilityContext.kind);
+  let serviceResult = null;
+  confirmButton.disabled = true;
   try {
-    if (tourFacilityKinds.has(activeFacilityContext.kind)) {
+    if (isTour) {
       await apiFetch(`/api/bookings/${selected.bookingId}/tours/party`, {
         method: 'POST',
         body: JSON.stringify({
@@ -1289,7 +1462,7 @@ $('#confirm-facility').addEventListener('click', async event => {
         })
       });
     } else {
-      await apiFetch(`/api/bookings/${selected.bookingId}/services`, {
+      serviceResult = await apiFetch(`/api/bookings/${selected.bookingId}/services`, {
         method: 'POST',
         body: JSON.stringify({
           serviceId: activeFacilityContext.service.id,
@@ -1303,15 +1476,15 @@ $('#confirm-facility').addEventListener('click', async event => {
     activeFacilityBtn.classList.add('booked');
     activeFacilityBtn.textContent = 'จองแล้ว';
     $('#facility-dialog').close();
-    toast(tourFacilityKinds.has(activeFacilityContext.kind)
+    toast(isTour
       ? 'จองทริปฟรีเรียบร้อยแล้ว'
-      : 'บันทึกบริการเสริมและยอดชำระแล้ว');
+      : `บันทึกรอบแล้ว · เพิ่มยอด ฿${money(Number(serviceResult.data.amount))} · สิทธิ์ ${serviceResult.data.passQuantity} คน ชำระตอน Check-out`);
   } catch (error) {
     facilityReview.hidden = true;
     facilityForm.hidden = false;
     $('#facility-status').textContent = error.message;
     facilityForm.elements.time.focus();
-  } finally { event.currentTarget.disabled = false; }
+  } finally { confirmButton.disabled = false; }
 });
 
 $('#chat-toggle')?.addEventListener('click', () => {
@@ -1364,7 +1537,7 @@ let reviewingPayment = null;
 let accountingQueue = [];
 
 async function renderAccountingPayments() {
-  accountingPayments.innerHTML = '<tr><td colspan="6">กำลังโหลดธุรกรรมจากฐานข้อมูล...</td></tr>';
+  accountingPayments.innerHTML = '<tr><td colspan="7">กำลังโหลดธุรกรรมจากฐานข้อมูล...</td></tr>';
   try {
     const [submitted, verified] = await Promise.all([
       apiFetch('/api/accounting/payments?status=SUBMITTED&page=1&limit=100'),
@@ -1380,15 +1553,33 @@ async function renderAccountingPayments() {
         <td><strong>${escapeHtml(payment.booking.code)}</strong><small>${escapeHtml(payment.booking.status)}</small></td>
         <td>${escapeHtml(payment.customer.name)}<small>${escapeHtml(payment.customer.email || '')}</small></td>
         <td>${escapeHtml(payment.transactionType)}</td>
+        <td>${payment.method === 'BANK_TRANSFER' ? 'โอนธนาคาร' : payment.method === 'CARD' ? 'บัตร' : payment.method === 'CASH' ? 'เงินสด' : escapeHtml(payment.method || '-')}</td>
         <td><strong>฿${money(Number(payment.amount))}</strong></td>
         <td>${payment.status === 'SUBMITTED'
-          ? `<button type="button" class="status-badge yellow" data-review-payment="${payment.id}">เปิดดูหลักฐาน</button>`
+          ? `<button type="button" class="status-badge yellow" data-review-payment="${payment.id}">ตรวจหลักฐาน · รอตรวจ</button>`
           : `<button type="button" class="booking-outline" data-request-refund="${payment.id}" data-payment-amount="${payment.amount}">ขอคืนเงิน</button>`}</td>
-      </tr>`).join('') : '<tr><td colspan="6">ไม่มีหลักฐานรอตรวจ</td></tr>';
+      </tr>`).join('') : '<tr><td colspan="7">ไม่มีรายการชำระเงิน</td></tr>';
   } catch (error) {
-    accountingPayments.innerHTML = `<tr><td colspan="6">${escapeHtml(error.message)}</td></tr>`;
+    accountingPayments.innerHTML = `<tr><td colspan="7">${escapeHtml(error.message)}</td></tr>`;
   }
 }
+
+$('#refresh-accounting-payments')?.addEventListener('click', async event => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  try {
+    await renderAccountingPayments();
+    await renderFinancialSummary('accounting-financial-summary');
+  } finally {
+    button.disabled = false;
+  }
+});
+
+setInterval(() => {
+  if (currentStaffSession?.role === 'accounting' && !$('#panel-accounting')?.hidden && !document.hidden) {
+    renderAccountingPayments();
+  }
+}, 15000);
 
 accountingPayments.addEventListener('click', async event => {
   if (currentStaffSession?.role !== 'accounting') return;
@@ -1550,35 +1741,196 @@ async function renderFinancialSummary(targetId) {
   }
 }
 
+async function previewReceptionSettlement() {
+  const form = $('#reception-payment-form');
+  const summary = $('#reception-settlement-summary');
+  const roomChoices = $('#reception-settlement-room-choices');
+  $('#reception-payment-result').textContent = '';
+  const bookingCode = form.elements.bookingCode.value.trim().toUpperCase();
+  const action = form.elements.settlementAction.value;
+  delete form.dataset.bookingId;
+  delete form.dataset.previewSignature;
+  delete form.dataset.amountDue;
+  roomChoices.replaceChildren();
+  roomChoices.hidden = true;
+  setSettlementPaymentVisible(false);
+  $('#reception-settlement-submit').textContent = 'ยืนยันและเปลี่ยนสถานะ';
+  if (!bookingCode) {
+    summary.innerHTML = '<span>กรุณากรอกรหัสการจอง</span>';
+    return null;
+  }
+  summary.innerHTML = '<span>กำลังตรวจสอบข้อมูล...</span>';
+  try {
+    const { data } = await apiFetch(`/api/staff/settlements/preview?bookingCode=${encodeURIComponent(bookingCode)}&action=${action}`);
+    form.dataset.bookingId = data.id;
+    form.dataset.previewSignature = `${bookingCode}|${action}`;
+    form.dataset.amountDue = String(Number(data.amountDue));
+    summary.innerHTML = `
+      <div><small>ลูกค้า</small><strong>${escapeHtml(data.customer.name)}</strong></div>
+      <div><small>ห้อง</small><strong>${data.rooms.map(room => `${escapeHtml(room.roomType)} · ${escapeHtml(room.roomCode || 'ยังไม่จัดห้อง')}`).join(', ')}</strong></div>
+      <div><small>${action === 'CHECK_IN' ? 'ค่าห้องคงเหลือ' : 'ค่าบริการเสริม'}</small><strong>฿${money(Number(data.amountDue))}</strong></div>`;
+    await renderSettlementRoomChoices(data, action);
+    const hasPaymentDue = Number(data.amountDue) > 0;
+    setSettlementPaymentVisible(hasPaymentDue);
+    $('#reception-settlement-submit').textContent = hasPaymentDue
+      ? `รับชำระและยืนยัน ${action === 'CHECK_IN' ? 'Check-in' : 'Check-out'}`
+      : `ยืนยัน ${action === 'CHECK_IN' ? 'Check-in' : 'Check-out'}`;
+    return data;
+  } catch (error) {
+    delete form.dataset.bookingId;
+    delete form.dataset.previewSignature;
+    delete form.dataset.amountDue;
+    summary.innerHTML = `<span class="login-error-text">${escapeHtml(error.message)}</span>`;
+    return null;
+  }
+}
+
+function setSettlementPaymentVisible(visible) {
+  const fields = $('#reception-settlement-payment-fields');
+  fields.hidden = !visible;
+  fields.querySelectorAll('input, select').forEach(field => {
+    field.disabled = !visible;
+    field.required = visible;
+  });
+}
+
+async function renderSettlementRoomChoices(booking, action) {
+  const container = $('#reception-settlement-room-choices');
+  if (action !== 'CHECK_IN') return;
+  const roomsToChoose = booking.rooms.filter(room => !room.id || room.status !== 'AVAILABLE');
+  if (!roomsToChoose.length) return;
+  const alreadyAssignedRoomIds = new Set(booking.rooms
+    .filter(room => room.id && room.status === 'AVAILABLE')
+    .map(room => Number(room.id)));
+
+  container.hidden = false;
+  const heading = document.createElement('strong');
+  heading.textContent = 'เลือกห้องว่างก่อน Check-in';
+  container.append(heading);
+
+  for (const bookedRoom of roomsToChoose) {
+    let available = [];
+    let availabilityError = null;
+    try {
+      const response = await apiFetch(`/api/staff/bookings/${booking.id}/available-rooms?bookingRoomId=${bookedRoom.bookingRoomId}`);
+      available = response.data;
+    } catch (error) {
+      availabilityError = error.message;
+    }
+
+    const label = document.createElement('label');
+    label.textContent = `${bookedRoom.roomType} · ${bookedRoom.guestCount} คน`;
+    const selectableRooms = available.filter(room => !alreadyAssignedRoomIds.has(Number(room.id)));
+    const select = document.createElement('select');
+    select.dataset.bookingRoomId = String(bookedRoom.bookingRoomId);
+    select.required = true;
+    const emptyOption = availabilityError
+      ? `โหลดห้องว่างไม่ได้: ${availabilityError}`
+      : selectableRooms.length ? 'เลือกห้องว่าง' : 'ไม่มีห้องว่างประเภทนี้';
+    select.add(new Option(emptyOption, ''));
+    for (const room of selectableRooms) {
+      select.add(new Option(`${room.code}${room.area ? ` · ${room.area}` : ''}`, String(room.id)));
+    }
+    select.disabled = !selectableRooms.length;
+    label.append(select);
+    container.append(label);
+  }
+}
+
+$('#reception-settlement-preview')?.addEventListener('click', previewReceptionSettlement);
+$('#reception-payment-form')?.addEventListener('change', event => {
+  if (['bookingCode', 'settlementAction'].includes(event.target.name)) {
+    delete event.currentTarget.dataset.bookingId;
+    delete event.currentTarget.dataset.previewSignature;
+    delete event.currentTarget.dataset.amountDue;
+    delete event.currentTarget.dataset.paymentKey;
+    delete event.currentTarget.dataset.paymentSignature;
+    event.currentTarget.elements.proof.value = '';
+    $('#reception-settlement-room-choices').replaceChildren();
+    $('#reception-settlement-room-choices').hidden = true;
+    $('#reception-settlement-summary').innerHTML = '<span>กรอกรหัสการจองแล้วกดตรวจสอบยอด</span>';
+    $('#reception-payment-result').textContent = '';
+    setSettlementPaymentVisible(false);
+  }
+});
+
 $('#reception-payment-form')?.addEventListener('submit', async event => {
   event.preventDefault();
-  if (currentStaffSession?.role !== 'reception') return;
+  if (!['reception', 'superadmin'].includes(currentStaffSession?.role)) return;
   const form = event.target;
   const result = $('#reception-payment-result');
   const submit = form.querySelector('[type="submit"]');
-  const bookingId = form.elements.bookingId.value;
-  const amount = form.elements.amount.value.trim();
-  const method = form.elements.method.value;
-  const signature = `${bookingId}|${amount}|${method}`;
-  if (form.dataset.paymentSignature !== signature) {
-    form.dataset.paymentSignature = signature;
-    form.dataset.paymentKey = `RECEPTION-${bookingId}-${crypto.randomUUID()}`;
+  const bookingCode = form.elements.bookingCode.value.trim().toUpperCase();
+  const action = form.elements.settlementAction.value;
+  if (!form.dataset.bookingId || form.dataset.previewSignature !== `${bookingCode}|${action}`) {
+    const preview = await previewReceptionSettlement();
+    if (!preview) return;
+  }
+  const amountDue = Number(form.dataset.amountDue || 0);
+  if (amountDue > 0 && !form.reportValidity()) return;
+
+  const selectedRooms = Array.from($('#reception-settlement-room-choices')
+    .querySelectorAll('select[data-booking-room-id]'));
+  if (action === 'CHECK_IN' && selectedRooms.some(select => !select.value)) {
+    result.textContent = 'กรุณาเลือกห้องว่างให้ครบทุกห้องก่อน Check-in';
+    return;
+  }
+  const selectedRoomIds = selectedRooms.map(select => select.value);
+  if (new Set(selectedRoomIds).size !== selectedRoomIds.length) {
+    result.textContent = 'กรุณาเลือกคนละห้องสำหรับแต่ละรายการจอง';
+    return;
+  }
+
+  if (amountDue > 0) {
+    const signature = `${form.dataset.bookingId}|${action}|${form.elements.method.value}`;
+    if (form.dataset.paymentSignature !== signature) {
+      form.dataset.paymentSignature = signature;
+      form.dataset.paymentKey = `RECEPTION-${action}-${form.dataset.bookingId}-${crypto.randomUUID()}`;
+    }
+  }
+  const payload = amountDue > 0 ? new FormData() : JSON.stringify({});
+  if (amountDue > 0) {
+    payload.append('method', form.elements.method.value);
+    payload.append('idempotencyKey', form.dataset.paymentKey);
+    payload.append('proof', form.elements.proof.files[0]);
   }
   submit.disabled = true;
-  result.textContent = 'กำลังตรวจสอบยอดคงเหลือ...';
+  result.textContent = 'กำลังตรวจห้องและยืนยันสถานะ...';
   try {
-    const response = await apiFetch(`/api/staff/bookings/${bookingId}/payments`, {
-      method: 'POST',
-      body: JSON.stringify({
-        amount,
-        method,
-        idempotencyKey: form.dataset.paymentKey
-      })
+    if (action === 'CHECK_IN') {
+      for (const select of selectedRooms) {
+        await apiFetch(`/api/staff/bookings/${form.dataset.bookingId}/assignments`, {
+          method: 'POST',
+          body: JSON.stringify({
+            bookingRoomId: Number(select.dataset.bookingRoomId),
+            roomId: Number(select.value),
+            reason: 'จัดห้องก่อน Check-in'
+          })
+        });
+      }
+    }
+    const slug = action === 'CHECK_IN' ? 'check-in' : 'check-out';
+    const response = await apiFetch(`/api/staff/bookings/${form.dataset.bookingId}/${slug}-settlement`, {
+      method: 'POST', body: payload
     });
-    result.textContent = `บันทึก PAY-${response.data.id} แล้ว · คงเหลือ ฿${money(Number(response.data.outstanding))}`;
-    form.elements.amount.value = '';
+    result.textContent = response.data.payment
+      ? `${action === 'CHECK_IN' ? 'Check-in' : 'Check-out'} สำเร็จ · รับชำระ ฿${money(Number(response.data.payment.amount))} · บันทึกเลขรายการ ${response.data.payment.reference} อัตโนมัติ`
+      : `${action === 'CHECK_IN' ? 'Check-in' : 'Check-out'} สำเร็จ · ไม่มียอดค้างชำระ`;
+    form.elements.proof.value = '';
+    setSettlementPaymentVisible(false);
+    $('#reception-settlement-room-choices').replaceChildren();
+    $('#reception-settlement-room-choices').hidden = true;
+    $('#reception-settlement-summary').innerHTML = '<span>กรอกรหัสการจองแล้วกดตรวจสอบยอด</span>';
+    delete form.dataset.amountDue;
     delete form.dataset.paymentKey;
     delete form.dataset.paymentSignature;
+    delete form.dataset.bookingId;
+    delete form.dataset.previewSignature;
+    await Promise.all([
+      renderStaffBookingHistory(currentStaffSession.role),
+      renderReceptionRoomsApi(),
+      renderCleaningSummaryApi()
+    ]);
   } catch (error) {
     result.textContent = error.message;
   } finally {
@@ -1591,6 +1943,7 @@ const staffAccountForm = $('#staff-account-form');
 const staffAccessList = $('#staff-access-list');
 let editingStaffEmail = null;
 const receptionRoomList = $('#reception-room-list');
+const receptionRoomTypeFilter = $('#reception-room-type-filter');
 const cleaningQueue = $('#cleaning-queue');
 const repairRoomList = $('#repair-room-list');
 const damageDialog = $('#room-damage-dialog');
@@ -1628,31 +1981,58 @@ damageDialog?.addEventListener('close', () => {
 
 // Room operations below are the persistent replacement for the legacy in-memory demo maps.
 let apiRoomRecords = [];
+let apiRoomSummary = null;
 let apiDamageRoom = null;
 const apiDamageForm = $('#room-damage-form');
 
-async function loadStaffRoomsApi() {
-  const { data } = await apiFetch('/api/staff/rooms?page=1&limit=100');
-  apiRoomRecords = data;
-  return data;
+async function loadStaffRoomsApi(roomTypeId = 'all') {
+  const params = new URLSearchParams({ page: '1', limit: '100' });
+  if (roomTypeId !== 'all') params.set('roomTypeId', roomTypeId);
+  const response = await apiFetch(`/api/staff/rooms?${params}`);
+  apiRoomRecords = response.data;
+  apiRoomSummary = response.meta?.summary || null;
+  return response.data;
+}
+
+async function loadReceptionRoomTypes() {
+  if (!receptionRoomTypeFilter || receptionRoomTypeFilter.options.length > 1) return;
+  const { data } = await apiFetch('/api/room-types');
+  for (const roomType of data) {
+    receptionRoomTypeFilter.add(new Option(roomType.name, roomType.id));
+  }
 }
 
 async function renderReceptionRoomsApi() {
   receptionRoomList.innerHTML = '<tr><td colspan="5">กำลังโหลดห้องจากฐานข้อมูล...</td></tr>';
   try {
-    const rooms = await loadStaffRoomsApi();
-    receptionRoomList.innerHTML = rooms.map(room => `
+    await loadReceptionRoomTypes();
+    const selectedRoomType = receptionRoomTypeFilter?.value || 'all';
+    const visibleRooms = await loadStaffRoomsApi(selectedRoomType);
+    renderReceptionRoomCounts(apiRoomSummary);
+    receptionRoomList.innerHTML = visibleRooms.map(room => `
       <tr data-api-room-id="${room.id}">
         <td><strong>${escapeHtml(room.code)}</strong></td><td>—</td>
         <td>${escapeHtml(room.roomTypeName)}</td>
         <td><span class="status-badge ${room.status === 'AVAILABLE' ? 'green' : 'yellow'}">${escapeHtml(room.status)}</span></td>
         <td><button type="button" class="link-edit" data-room-history="${room.id}">ดูประวัติ</button></td>
       </tr>`).join('') || '<tr><td colspan="5">ไม่พบห้อง</td></tr>';
-    const counts = Object.fromEntries(['AVAILABLE','OCCUPIED','NEEDS_CLEANING','OUT_OF_SERVICE'].map(status =>
-      [status, rooms.filter(room => room.status === status).length]));
-    $('#cleaning-room-count').textContent = `${counts.NEEDS_CLEANING} ห้อง`;
-  } catch (error) { receptionRoomList.innerHTML = `<tr><td colspan="5">${escapeHtml(error.message)}</td></tr>`; }
+    $('#cleaning-room-count').textContent = `${apiRoomSummary.cleaning} ห้อง`;
+  } catch (error) {
+    renderReceptionRoomCounts(null);
+    receptionRoomList.innerHTML = `<tr><td colspan="5">${escapeHtml(error.message)}</td></tr>`;
+  }
 }
+
+function renderReceptionRoomCounts(summary) {
+  const values = summary
+    ? [summary.available, summary.booked, summary.occupied, summary.cleaning, summary.outOfService]
+    : ['—', '—', '—', '—', '—'];
+  $('#reception-room-counts')?.querySelectorAll('strong').forEach((count, index) => {
+    count.textContent = values[index];
+  });
+}
+
+receptionRoomTypeFilter?.addEventListener('change', renderReceptionRoomsApi);
 
 receptionRoomList.addEventListener('click', async event => {
   const button = event.target.closest('[data-room-history]');
@@ -1675,19 +2055,36 @@ async function renderCleaningSummaryApi() {
 async function renderCleaningQueueApi() {
   cleaningQueue.innerHTML = '<p>กำลังโหลดคิวทำความสะอาด...</p>';
   try {
-    const [cleaning, rooms] = await Promise.all([
+    const [cleaning, rooms, roomTypes] = await Promise.all([
       apiFetch('/api/housekeeping/cleaning'),
-      loadStaffRoomsApi()
+      loadStaffRoomsApi(),
+      apiFetch('/api/room-types')
     ]);
+    const roomTypeChoice = $('#damage-room-type-choice');
+    roomTypeChoice.replaceChildren(
+      new Option('เลือกประเภทห้อง', ''),
+      ...roomTypes.data.map(type => new Option(type.name, type.id))
+    );
+    const roomChoice = $('#damage-room-choice');
+    roomChoice.replaceChildren(new Option('เลือกประเภทห้องก่อน', ''));
+    roomChoice.disabled = true;
+    roomTypeChoice.onchange = () => {
+      const selectedTypeId = Number(roomTypeChoice.value);
+      const matchingRooms = rooms.filter(room => Number(room.roomTypeId) === selectedTypeId);
+      roomChoice.replaceChildren(
+        new Option(selectedTypeId ? 'เลือกเลขห้อง' : 'เลือกประเภทห้องก่อน', ''),
+        ...matchingRooms.map(room => new Option(room.code, room.id))
+      );
+      roomChoice.disabled = !selectedTypeId;
+    };
     cleaningQueue.innerHTML = cleaning.data.length ? cleaning.data.map(item => `
       <div class="housekeeping-item staff-room-row">
-        <div><strong>ห้อง ${escapeHtml(item.roomCode)}</strong><small>${escapeHtml(item.roomTypeName)} · ${escapeHtml(item.status)}</small></div>
+        <div><strong>ห้อง ${escapeHtml(item.roomCode)}</strong><small>${escapeHtml(item.roomTypeName)} · ${item.startedAt ? 'กำลังทำความสะอาด' : 'รอทำความสะอาด'}</small></div>
         <div class="staff-actions">
           <button type="button" class="btn-dark-pill" data-clean-event="${item.id}" data-clean-action="${item.startedAt ? 'complete' : 'start'}">${item.startedAt ? 'ยืนยันว่าทำเสร็จ' : 'เริ่มทำความสะอาด'}</button>
           <button type="button" class="booking-outline" data-api-damage-room="${item.roomId}">แจ้งความเสียหาย</button>
         </div>
       </div>`).join('') : '<p class="demo-note">ยังไม่มีห้องในคิว</p>';
-    $('#damage-room-choice').querySelector('select').replaceChildren(...rooms.map(room => new Option(`ห้อง ${room.code} · ${room.roomTypeName}`, room.id)));
   } catch (error) { cleaningQueue.innerHTML = `<p>${escapeHtml(error.message)}</p>`; }
 }
 
@@ -1809,14 +2206,55 @@ async function loadPublicReviews() {
 }
 loadPublicReviews();
 
+async function renderReviewModeration() {
+  const target = $('#superadmin-review-list');
+  if (!target) return;
+  target.innerHTML = '<p>กำลังโหลดรีวิว...</p>';
+  try {
+    const { data } = await apiFetch('/api/reviews?page=1&limit=100');
+    target.innerHTML = data.length ? data.map(review => `
+      <article class="review-moderation-item">
+        <div><strong>${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</strong>
+          <p>“${escapeHtml(review.content)}”</p>
+          <small>${escapeHtml(review.customerName)} · ${escapeHtml(review.roomTypeName || 'TKC Hotel')}</small>
+        </div>
+        <button type="button" class="booking-outline" data-hide-review="${review.id}">ลบออกจากหน้าเว็บ</button>
+      </article>`).join('') : '<p>ไม่มีรีวิวที่แสดงอยู่ในขณะนี้</p>';
+  } catch (error) {
+    target.innerHTML = `<p class="login-error-text">โหลดรีวิวไม่สำเร็จ: ${escapeHtml(error.message)}</p>`;
+  }
+}
+
+$('#refresh-review-moderation')?.addEventListener('click', renderReviewModeration);
+$('#superadmin-review-list')?.addEventListener('click', async event => {
+  const button = event.target.closest('[data-hide-review]');
+  if (!button || currentStaffSession?.role !== 'superadmin') return;
+  if (!window.confirm('ยืนยันนำรีวิวนี้ออกจากหน้าเว็บ?')) return;
+  const reason = window.prompt('ระบุเหตุผลที่ซ่อนรีวิว');
+  if (!reason?.trim()) return;
+  button.disabled = true;
+  try {
+    await apiFetch(`/api/staff/reviews/${button.dataset.hideReview}/hide`, {
+      method: 'POST', body: JSON.stringify({ reason: reason.trim() })
+    });
+    await Promise.all([renderReviewModeration(), loadPublicReviews()]);
+    toast('นำรีวิวออกจากหน้าเว็บแล้ว');
+  } catch (error) {
+    button.disabled = false;
+    toast(error.message);
+  }
+});
+
 async function loadCustomerChat() {
   if (!customerEmail) return;
   const box = $('#chat-messages');
   try {
     const { data } = await apiFetch('/api/chat/messages?after=0&limit=100');
-    box.innerHTML = data.length ? data.map(item => `
+    const visibleMessages = data.filter(item => !item.deleted);
+    box.innerHTML = visibleMessages.length ? visibleMessages.map(item => `
       <p class="message ${item.senderType === 'CUSTOMER' ? 'guest' : 'staff'}">${escapeHtml(item.message)}</p>`).join('')
-      : '<p class="message staff">สวัสดีค่ะ สอบถามฝ่ายต้อนรับได้ที่นี่</p>';
+      : data.length ? '<p class="message staff">ยังไม่มีข้อความในบทสนทนานี้</p>'
+        : '<p class="message staff">สวัสดีค่ะ สอบถามฝ่ายต้อนรับได้ที่นี่</p>';
     box.scrollTop = box.scrollHeight;
   } catch (error) { if (error.status !== 401) box.innerHTML = `<p>${escapeHtml(error.message)}</p>`; }
 }
@@ -1831,36 +2269,74 @@ $('#chat-form')?.addEventListener('submit', async event => {
 $('#chat-toggle')?.addEventListener('click', loadCustomerChat);
 document.querySelectorAll('[data-open-chat]').forEach(button => button.addEventListener('click', loadCustomerChat));
 setInterval(() => { if (customerEmail && !$('#chat-panel').hidden) loadCustomerChat(); }, 5000);
+setInterval(promptForPendingCheckoutReview, 10000);
+setInterval(() => {
+  if (customerEmail && $('#my-bookings-dialog')?.open) openMyBookings();
+}, 15000);
 
 let activeReceptionCustomerId = null;
 async function renderReceptionChatsApi() {
-  const select = $('#reception-chat-customer'); const box = $('#rec-chat-box');
+  const selects = [$('#reception-chat-customer'), $('#superadmin-chat-customer')].filter(Boolean);
+  const boxes = [$('#rec-chat-box'), $('#superadmin-chat-box')].filter(Boolean);
   try {
     const { data } = await apiFetch('/api/reception/chats?page=1&limit=100');
-    select.replaceChildren(new Option('เลือกลูกค้าที่สนทนา', ''), ...data.map(item =>
-      new Option(`${item.customerName}${item.unreadCount ? ` · ยังไม่อ่าน ${item.unreadCount}` : ''}`, item.customerId)));
-    if (activeReceptionCustomerId && data.some(item => item.customerId === activeReceptionCustomerId)) select.value = String(activeReceptionCustomerId);
-    else activeReceptionCustomerId = null;
-    if (!data.length) box.innerHTML = '<p>ยังไม่มีข้อความจากลูกค้า</p>';
-  } catch (error) { box.innerHTML = `<p>${escapeHtml(error.message)}</p>`; }
+    if (activeReceptionCustomerId && !data.some(item => item.customerId === activeReceptionCustomerId)) activeReceptionCustomerId = null;
+    if (!activeReceptionCustomerId && data.length) activeReceptionCustomerId = data[0].customerId;
+    for (const select of selects) {
+      select.replaceChildren(new Option('เลือกลูกค้าที่สนทนา', ''), ...data.map(item =>
+        new Option(`${item.customerName}${item.unreadCount ? ` · ยังไม่อ่าน ${item.unreadCount}` : ''}`, item.customerId)));
+      select.value = activeReceptionCustomerId ? String(activeReceptionCustomerId) : '';
+    }
+    if (!activeReceptionCustomerId) boxes.forEach(box => { box.innerHTML = '<p>ยังไม่มีข้อความจากลูกค้า</p>'; });
+    else await loadReceptionThread();
+  } catch (error) { boxes.forEach(box => { box.innerHTML = `<p>${escapeHtml(error.message)}</p>`; }); }
 }
 
 async function loadReceptionThread() {
-  const box = $('#rec-chat-box');
-  if (!activeReceptionCustomerId) { box.innerHTML = '<p>เลือกลูกค้าที่ต้องการสนทนา</p>'; return; }
+  const boxes = [$('#rec-chat-box'), $('#superadmin-chat-box')].filter(Boolean);
+  if (!activeReceptionCustomerId) { boxes.forEach(box => { box.innerHTML = '<p>เลือกลูกค้าที่ต้องการสนทนา</p>'; }); return; }
   try {
     const { data } = await apiFetch(`/api/reception/chats/${activeReceptionCustomerId}/messages?after=0&limit=100`);
-    box.innerHTML = data.map(item => `<div class="rec-msg ${item.senderType === 'CUSTOMER' ? 'customer' : 'staff'}"><p>${escapeHtml(item.message)}</p><small>${new Date(item.sentAt).toLocaleTimeString('th-TH')}</small></div>`).join('');
-    box.scrollTop = box.scrollHeight;
-  } catch (error) { box.innerHTML = `<p>${escapeHtml(error.message)}</p>`; }
+    const messages = data.filter(item => !item.deleted).map(item => `<div class="rec-msg ${item.senderType === 'CUSTOMER' ? 'customer' : 'staff'}">
+      <p>${escapeHtml(item.message)}</p>
+      <div class="rec-msg-meta"><small>${new Date(item.sentAt).toLocaleTimeString('th-TH')}</small>
+        <button type="button" class="rec-msg-delete" data-delete-chat-message="${item.id}" aria-label="ลบข้อความนี้">ลบ</button>
+      </div>
+    </div>`).join('') || '<p>ยังไม่มีข้อความในบทสนทนานี้</p>';
+    boxes.forEach(box => { box.innerHTML = messages; box.scrollTop = box.scrollHeight; });
+  } catch (error) { boxes.forEach(box => { box.innerHTML = `<p>${escapeHtml(error.message)}</p>`; }); }
 }
-$('#reception-chat-customer')?.addEventListener('change', event => { activeReceptionCustomerId = Number(event.target.value) || null; loadReceptionThread(); });
-$('#rec-chat-form')?.addEventListener('submit', async event => {
-  event.preventDefault(); event.stopImmediatePropagation(); if (!activeReceptionCustomerId) return;
-  const input = $('#rec-chat-input'); const message = input.value.trim(); if (!message) return;
-  try { await apiFetch(`/api/reception/chats/${activeReceptionCustomerId}/messages`, { method: 'POST', body: JSON.stringify({ message }) }); input.value = ''; await loadReceptionThread(); }
-  catch (error) { toast(error.message); }
-}, { capture: true });
+[$('#reception-chat-customer'), $('#superadmin-chat-customer')].filter(Boolean).forEach(select => select.addEventListener('change', event => {
+  activeReceptionCustomerId = Number(event.target.value) || null;
+  [$(`#reception-chat-customer`), $('#superadmin-chat-customer')].filter(Boolean).forEach(item => { item.value = event.target.value; });
+  loadReceptionThread();
+}));
+
+document.querySelectorAll('[data-staff-chat-form]').forEach(form => form.addEventListener('submit', async event => {
+  event.preventDefault(); event.stopImmediatePropagation();
+  if (!activeReceptionCustomerId) return toast('เลือกลูกค้าที่ต้องการตอบแชตก่อน');
+  const input = form.querySelector('input'); const message = input.value.trim(); if (!message) return;
+  try {
+    await apiFetch(`/api/reception/chats/${activeReceptionCustomerId}/messages`, { method: 'POST', body: JSON.stringify({ message }) });
+    input.value = '';
+    await loadReceptionThread();
+  } catch (error) { toast(error.message); }
+}, { capture: true }));
+
+document.addEventListener('click', async event => {
+  const button = event.target.closest('[data-delete-chat-message]');
+  if (!button || !activeReceptionCustomerId) return;
+  if (!window.confirm('ยืนยันลบข้อความนี้ออกจากแชตกับลูกค้า?')) return;
+  button.disabled = true;
+  try {
+    await apiFetch(`/api/reception/chats/${activeReceptionCustomerId}/messages/${button.dataset.deleteChatMessage}`, { method: 'DELETE' });
+    await renderReceptionChatsApi();
+    toast('ลบข้อความแล้ว');
+  } catch (error) {
+    button.disabled = false;
+    toast(error.message);
+  }
+});
 
 async function renderStaffAccessApi() {
   staffAccessList.innerHTML = '<tr><td colspan="4">กำลังโหลดพนักงาน...</td></tr>';
@@ -1908,6 +2384,8 @@ function refreshStaffDashboard(role) {
   if (role === 'superadmin') {
     renderStaffAccessApi();
     renderStaffBookingHistory(role);
+    renderReceptionChatsApi();
+    renderReviewModeration();
   }
   if (role === 'accounting') {
     renderAccountingPayments();

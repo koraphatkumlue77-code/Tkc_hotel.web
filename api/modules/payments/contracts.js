@@ -41,6 +41,30 @@ export function verifiedReceipt(body) {
   };
 }
 
+export function settlementPreviewQuery(query) {
+  const value = requireObject(query);
+  const bookingCode = requireString("bookingCode", value.bookingCode, { max: 20 }).toUpperCase();
+  const action = requireString("action", value.action, { max: 20 }).toUpperCase();
+  if (!/^[A-Z0-9-]+$/.test(bookingCode)) validationError("bookingCode");
+  if (!["CHECK_IN", "CHECK_OUT"].includes(action)) validationError("action");
+  return { bookingCode, action };
+}
+
+export function settlementReceipt(body) {
+  const value = requireObject(body);
+  const hasPaymentDetails = [value.method, value.idempotencyKey]
+    .some((item) => item !== undefined && item !== null && item !== "");
+  if (!hasPaymentDetails) {
+    return { method: null, reference: null, idempotencyKey: null };
+  }
+  const method = requireString("method", value.method, { max: 30 }).toUpperCase();
+  if (!["CASH", "BANK_TRANSFER", "CARD"].includes(method)) validationError("method");
+  return {
+    method,
+    idempotencyKey: normalizeIdempotencyKey(value.idempotencyKey)
+  };
+}
+
 export function summaryPeriod(query, today) {
   const from = query.from ?? today;
   const to = query.to ?? today;

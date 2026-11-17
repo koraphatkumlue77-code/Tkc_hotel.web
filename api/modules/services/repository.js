@@ -76,7 +76,7 @@ export class ServicesRepository {
     return this.#transaction(async (connection) => {
       const booking = await lockOwnedBooking(connection, bookingId, customerId);
       if (!eligibleCustomerService(booking)) {
-        throw new ApiError(409, "BOOKING_SERVICE_STATE_INVALID", "Services can only be added before Check-in");
+        throw new ApiError(409, "BOOKING_SERVICE_STATE_INVALID", "Services can only be added during an active booking or stay");
       }
       const result = await createService(connection, booking, input, null);
       await addBookingAmount(connection, bookingId, result.amountCents);
@@ -128,61 +128,39 @@ export class ServicesRepository {
   async addStaff(bookingId, employeeId, input) {
     return this.#transaction(async (connection) => {
       const [replayRows] = await connection.execute(`
-        SELECT payment_id AS paymentId, booking_id AS bookingId, method,
-               CAST(amount AS CHAR) AS amount, status, auto_check_result AS resultData
-        FROM Payment WHERE idempotency_key = ? FOR UPDATE
+        SELECT after_data AS resultData
+        FROM AuditLog
+        WHERE entity_type = 'BookingServiceRequest'
+          AND action = 'STAFF_SERVICE_ADDED'
+          AND JSON_UNQUOTE(JSON_EXTRACT(after_data, '$.idempotencyKey')) = ?
+        ORDER BY audit_log_id DESC LIMIT 1 FOR UPDATE
       `, [input.idempotencyKey]);
       if (replayRows[0]) {
-        const replay = replayRows[0];
-        if (Number(replay.bookingId) !== bookingId || replay.method !== input.method
-            || replay.status !== "VERIFIED") {
-          throw new ApiError(409, "IDEMPOTENCY_CONFLICT", "Idempotency key was used for different input");
-        }
         let stored;
-        try { stored = JSON.parse(replay.resultData); } catch { stored = null; }
-        if (!stored || stored.input?.serviceId !== input.serviceId
+        try { stored = typeof replayRows[0].resultData === "string"
+          ? JSON.parse(replayRows[0].resultData) : replayRows[0].resultData; } catch { stored = null; }
+        if (!stored || stored.bookingId !== bookingId
+            || stored.input?.serviceId !== input.serviceId
             || stored.input?.bookingRoomId !== input.bookingRoomId
             || stored.input?.quantity !== input.quantity
             || stored.input?.usageDate !== input.usageDate
-            || stored.input?.startTime !== input.startTime) {
+            || stored.input?.startTime !== input.startTime
+            || stored.input?.method !== input.method) {
           throw new ApiError(409, "IDEMPOTENCY_CONFLICT", "Idempotency key was used for different input");
         }
-        return { data: { ...stored.data, payment: { ...stored.data.payment, id: Number(replay.paymentId) } }, replayed: true };
+        return { data: stored.data, replayed: true };
       }
       const booking = await lockBooking(connection, bookingId);
       if (booking.status !== "CHECKED_IN") {
         throw new ApiError(409, "BOOKING_SERVICE_STATE_INVALID", "Staff paid services require a checked-in booking");
       }
       const result = await createService(connection, booking, input, employeeId);
-      if (result.amountCents <= 0) {
-        throw new ApiError(409, "SERVICE_NO_CHARGE", "This service does not require a post-Check-in payment");
-      }
       await addBookingAmount(connection, bookingId, result.amountCents);
-      const [payment] = await connection.execute(`
-        INSERT INTO Payment
-          (booking_id, transaction_type, direction, verified_by, method, amount,
-           status, submitted_at, verified_at, idempotency_key)
-        VALUES (?, 'SERVICE_PAYMENT', 'IN', ?, ?, ?, 'VERIFIED',
-                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?)
-      `, [bookingId, employeeId, input.method, result.data.amount, input.idempotencyKey]);
-      const data = {
-        ...result.data,
-        payment: {
-          id: Number(payment.insertId), transactionType: "SERVICE_PAYMENT",
-          amount: result.data.amount, method: input.method, status: "VERIFIED"
-        }
-      };
-      await connection.execute(
-        "UPDATE Payment SET auto_check_result = ? WHERE payment_id = ?",
-        [JSON.stringify({ input, data }), payment.insertId]
-      );
+      const data = result.data;
       await writeAudit(connection, {
-        entityType: "BookingService", entityId: data.id,
-        action: "POST_CHECK_IN_SERVICE_ADDED", actor: { type: "employee", id: employeeId }, after: data
-      });
-      await writeAudit(connection, {
-        entityType: "Payment", entityId: payment.insertId,
-        action: "SERVICE_PAYMENT_RECEIVED", actor: { type: "employee", id: employeeId }, after: data.payment
+        entityType: "BookingServiceRequest", entityId: data.id,
+        action: "STAFF_SERVICE_ADDED", actor: { type: "employee", id: employeeId },
+        after: { idempotencyKey: input.idempotencyKey, bookingId, input, data }
       });
       return { data, replayed: false };
     });
@@ -292,6 +270,9 @@ async function createService(connection, booking, input, employeeId) {
     throw new ApiError(409, "BOOKING_SERVICE_DUPLICATE", "Service is already selected for this room and date");
   }
   const unitPrice = service.serviceKind === "BREAKFAST" ? bookingRoom.breakfastRate : service.defaultRate;
+  if (["FITNESS", "SAUNA"].includes(service.serviceKind)) {
+    return createFacilityPassUsage(connection, booking, bookingRoom, service, input, employeeId, unitPrice);
+  }
   const amountCents = multiply(decimalToCents(unitPrice), input.quantity);
   const [bookingService] = await connection.execute(`
     INSERT INTO BookingService (booking_id, service_id, added_by, status)
@@ -334,7 +315,63 @@ function multiply(cents, quantity) {
 function eligibleCustomerService(booking) {
   return (booking.status === "PENDING_PAYMENT"
       && new Date(booking.holdExpiresAt).valueOf() > Date.now())
-    || ["CONFIRMED", "LATE_ARRIVAL"].includes(booking.status);
+    || ["CONFIRMED", "LATE_ARRIVAL", "CHECKED_IN"].includes(booking.status);
+}
+
+async function createFacilityPassUsage(connection, booking, bookingRoom, service, input, employeeId, unitPrice) {
+  const [selected] = await connection.execute(`
+    SELECT DISTINCT bs.booking_service_id AS id
+    FROM BookingService bs
+    JOIN ServiceUsage su ON su.booking_service_id = bs.booking_service_id
+    WHERE bs.booking_id = ? AND bs.service_id = ? AND bs.status = 'SELECTED'
+      AND su.booking_room_id = ?
+    ORDER BY bs.booking_service_id FOR UPDATE
+  `, [booking.id, input.serviceId, input.bookingRoomId]);
+  let bookingServiceId = selected[0] ? Number(selected[0].id) : null;
+  const ids = selected.map(({ id }) => Number(id));
+  let passQuantity = 0;
+  if (ids.length > 0) {
+    const placeholders = ids.map(() => "?").join(", ");
+    const [[entitlement]] = await connection.execute(`
+      SELECT COALESCE(SUM(CASE
+        WHEN status = 'PASS_CHARGE' THEN quantity
+        WHEN status = 'ACTIVE' AND unit_price_snapshot > 0 THEN quantity
+        ELSE 0 END), 0) AS quantity
+      FROM ServiceUsage WHERE booking_service_id IN (${placeholders})
+    `, ids);
+    passQuantity = Number(entitlement.quantity);
+  } else {
+    const [created] = await connection.execute(`
+      INSERT INTO BookingService (booking_id, service_id, added_by, status)
+      VALUES (?, ?, ?, 'SELECTED')
+    `, [booking.id, input.serviceId, employeeId]);
+    bookingServiceId = Number(created.insertId);
+  }
+  const upgradeQuantity = Math.max(0, input.quantity - passQuantity);
+  const amountCents = multiply(decimalToCents(unitPrice), upgradeQuantity);
+  if (upgradeQuantity > 0) {
+    await connection.execute(`
+      INSERT INTO ServiceUsage
+        (booking_service_id, booking_room_id, usage_date, start_time, unit_price_snapshot, quantity, status)
+      VALUES (?, ?, NULL, NULL, ?, ?, 'PASS_CHARGE')
+    `, [bookingServiceId, input.bookingRoomId, unitPrice, upgradeQuantity]);
+  }
+  const [usage] = await connection.execute(`
+    INSERT INTO ServiceUsage
+      (booking_service_id, booking_room_id, usage_date, start_time, unit_price_snapshot, quantity, status)
+    VALUES (?, ?, ?, ?, 0, ?, 'ACTIVE')
+  `, [bookingServiceId, input.bookingRoomId, input.usageDate, input.startTime, input.quantity]);
+  const finalPassQuantity = Math.max(passQuantity, input.quantity);
+  return {
+    amountCents,
+    data: {
+      id: bookingServiceId, usageId: Number(usage.insertId), bookingId: booking.id,
+      serviceId: Number(service.id), serviceName: service.name, serviceKind: service.serviceKind,
+      bookingRoomId: input.bookingRoomId, usageDate: input.usageDate,
+      startTime: input.startTime, quantity: input.quantity, passQuantity: finalPassQuantity,
+      unitPrice, amount: centsToDecimal(amountCents), status: "SELECTED"
+    }
+  };
 }
 
 function parseSchedule(value) {

@@ -218,6 +218,7 @@ export class BookingsRepository {
              b.channel, DATE_FORMAT(b.check_in_date, '%Y-%m-%d') AS checkIn,
              DATE_FORMAT(b.check_out_date, '%Y-%m-%d') AS checkOut,
              b.hold_expires_at AS holdExpiresAt,
+             CAST(b.service_subtotal_snapshot AS CHAR) AS serviceSubtotal,
              CAST(b.total_snapshot AS CHAR) AS total,
              c.customer_id AS customerId, c.full_name AS customerName,
              c.email AS customerEmail, c.phone AS customerPhone,
@@ -227,22 +228,60 @@ export class BookingsRepository {
     `, [bookingId]);
     const booking = rows[0];
     if (!booking) throw new ApiError(404, "BOOKING_NOT_FOUND", "Booking was not found");
-    const [rooms] = await this.pool.execute(`
-      SELECT br.booking_room_id AS id, br.room_type_id AS roomTypeId,
-             rt.type_name AS roomTypeName, br.guest_count AS guestCount,
-             CAST(br.nightly_rate_snapshot AS CHAR) AS nightlyRate,
-             ra.room_id AS assignedRoomId, r.room_code AS assignedRoomCode
-      FROM BookingRoom br
-      JOIN RoomType rt ON rt.room_type_id = br.room_type_id
-      LEFT JOIN RoomAssignment ra ON ra.assignment_id = (
-        SELECT MAX(current_ra.assignment_id)
-        FROM RoomAssignment current_ra
-        WHERE current_ra.booking_room_id = br.booking_room_id
-          AND current_ra.effective_to > current_ra.effective_from
-      )
-      LEFT JOIN Room r ON r.room_id = ra.room_id
-      WHERE br.booking_id = ? ORDER BY br.booking_room_id
-    `, [bookingId]);
+    const [rooms, services, tours] = await Promise.all([
+      this.pool.execute(`
+        SELECT br.booking_room_id AS id, br.room_type_id AS roomTypeId,
+               rt.type_name AS roomTypeName, br.guest_count AS guestCount,
+               CAST(br.nightly_rate_snapshot AS CHAR) AS nightlyRate,
+               ra.room_id AS assignedRoomId, r.room_code AS assignedRoomCode
+        FROM BookingRoom br
+        JOIN RoomType rt ON rt.room_type_id = br.room_type_id
+        LEFT JOIN RoomAssignment ra ON ra.assignment_id = (
+          SELECT MAX(current_ra.assignment_id)
+          FROM RoomAssignment current_ra
+          WHERE current_ra.booking_room_id = br.booking_room_id
+            AND current_ra.effective_to > current_ra.effective_from
+        )
+        LEFT JOIN Room r ON r.room_id = ra.room_id
+        WHERE br.booking_id = ? ORDER BY br.booking_room_id
+      `, [bookingId]).then(([records]) => records),
+      this.pool.execute(`
+        SELECT bs.booking_service_id AS id, s.name, bs.status,
+               su.usage_date AS usageDate,
+               TIME_FORMAT(su.start_time, '%H:%i:%s') AS startTime,
+               su.quantity, CAST(CAST(CASE WHEN su.service_usage_id = (
+                 SELECT MIN(first_usage.service_usage_id) FROM ServiceUsage first_usage
+                 WHERE first_usage.booking_service_id = bs.booking_service_id
+                   AND first_usage.status = 'ACTIVE'
+               ) THEN (
+                 SELECT COALESCE(SUM(charged.unit_price_snapshot * charged.quantity), 0)
+                 FROM ServiceUsage charged
+                 WHERE charged.booking_service_id = bs.booking_service_id
+                   AND (charged.status = 'PASS_CHARGE'
+                     OR (charged.status = 'ACTIVE' AND charged.unit_price_snapshot > 0))
+               ) ELSE 0 END AS DECIMAL(12,2)) AS CHAR) AS amount
+        FROM BookingService bs
+        JOIN Service s ON s.service_id = bs.service_id
+        LEFT JOIN ServiceUsage su ON su.booking_service_id = bs.booking_service_id
+        WHERE bs.booking_id = ? AND bs.status = 'SELECTED' AND su.status = 'ACTIVE'
+        ORDER BY bs.booking_service_id, su.usage_date, su.start_time
+      `, [bookingId]).then(([records]) => records),
+      this.pool.execute(`
+        SELECT s.name,
+               JSON_UNQUOTE(JSON_EXTRACT(s.schedule_json, '$.location')) AS location,
+               DATE_FORMAT(round_data.tour_date, '%Y-%m-%d') AS tourDate,
+               TIME_FORMAT(round_data.start_time, '%H:%i:%s') AS startTime,
+               COUNT(*) AS quantity, CAST(SUM(tr.unit_price_snapshot) AS CHAR) AS amount
+        FROM TourReservation tr
+        JOIN TourRound round_data ON round_data.tour_round_id = tr.tour_round_id
+        JOIN Service s ON s.service_id = round_data.service_id
+        WHERE tr.booking_id = ? AND tr.status <> 'CANCELLED'
+        GROUP BY tr.tour_round_id, s.name, location, round_data.tour_date, round_data.start_time
+        ORDER BY round_data.tour_date, round_data.start_time, tr.tour_round_id
+      `, [bookingId]).then(([records]) => records.map((record) => ({
+        ...record, quantity: Number(record.quantity)
+      })))
+    ]);
     return {
       id: Number(booking.id),
       bookingCode: booking.bookingCode,
@@ -251,6 +290,7 @@ export class BookingsRepository {
       checkIn: booking.checkIn,
       checkOut: booking.checkOut,
       holdExpiresAt: booking.holdExpiresAt,
+      serviceSubtotal: booking.serviceSubtotal,
       total: booking.total,
       customer: {
         id: Number(booking.customerId),
@@ -259,7 +299,9 @@ export class BookingsRepository {
         phone: booking.customerPhone,
         memberStatus: booking.customerMemberStatus
       },
-      rooms
+      rooms,
+      services,
+      tours
     };
   }
 
@@ -315,7 +357,7 @@ export class BookingsRepository {
     const booking = bookingRows[0];
     if (!booking) throw new ApiError(404, "BOOKING_NOT_FOUND", "Booking was not found");
 
-    const [rooms, tours, services, promotions, paymentRows, timeline, review] = await Promise.all([
+    const [rooms, tours, services, promotions, paymentRows, timeline, review, refunds] = await Promise.all([
       this.pool.execute(`
         SELECT br.booking_room_id AS id, br.room_type_id AS roomTypeId,
                rt.type_name AS roomTypeName, br.guest_count AS guestCount,
@@ -344,12 +386,24 @@ export class BookingsRepository {
                s.name, s.service_kind AS serviceKind, bs.status,
                su.booking_room_id AS bookingRoomId, su.usage_date AS usageDate,
                TIME_FORMAT(su.start_time, '%H:%i:%s') AS startTime,
-               CAST(su.unit_price_snapshot AS CHAR) AS unitPrice, su.quantity,
-               CAST(su.unit_price_snapshot * su.quantity AS CHAR) AS amount
+               CAST(CASE WHEN s.service_kind IN ('FITNESS', 'SAUNA')
+                 THEN s.default_rate ELSE su.unit_price_snapshot END AS CHAR) AS unitPrice,
+               su.quantity,
+               CAST(CAST(CASE WHEN su.service_usage_id = (
+                 SELECT MIN(first_usage.service_usage_id) FROM ServiceUsage first_usage
+                 WHERE first_usage.booking_service_id = bs.booking_service_id
+                   AND first_usage.status = 'ACTIVE'
+               ) THEN (
+                 SELECT COALESCE(SUM(charged.unit_price_snapshot * charged.quantity), 0)
+                 FROM ServiceUsage charged
+                 WHERE charged.booking_service_id = bs.booking_service_id
+                   AND (charged.status = 'PASS_CHARGE'
+                     OR (charged.status = 'ACTIVE' AND charged.unit_price_snapshot > 0))
+               ) ELSE 0 END AS DECIMAL(12,2)) AS CHAR) AS amount
         FROM BookingService bs
         JOIN Service s ON s.service_id = bs.service_id
         LEFT JOIN ServiceUsage su ON su.booking_service_id = bs.booking_service_id
-        WHERE bs.booking_id = ?
+        WHERE bs.booking_id = ? AND su.status = 'ACTIVE'
         ORDER BY bs.booking_service_id, su.usage_date, su.booking_room_id
       `, [bookingId]).then(([rows]) => rows),
       this.pool.execute(`
@@ -373,11 +427,24 @@ export class BookingsRepository {
         FROM AuditLog
         WHERE entity_type = 'Booking' AND entity_id = ?
         ORDER BY audit_log_id
-      `, [bookingId]).then(([rows]) => rows)
-      ,this.pool.execute(`
+      `, [bookingId]).then(([rows]) => rows),
+      this.pool.execute(`
         SELECT review_id AS id, rating, content, status, created_at AS createdAt
         FROM Review WHERE booking_id = ? LIMIT 1
-      `, [bookingId]).then(([rows]) => rows[0] ?? null)
+      `, [bookingId]).then(([rows]) => rows[0] ?? null),
+      this.pool.execute(`
+        SELECT payment_id AS id, related_payment_id AS sourcePaymentId,
+               CAST(amount AS CHAR) AS amount, status, request_reason AS reason,
+               requested_at AS requestedAt, approved_at AS approvedAt,
+               rejection_reason AS rejectionReason, processed_at AS processedAt
+        FROM Payment
+        WHERE booking_id = ? AND transaction_type = 'REFUND_REQUEST'
+        ORDER BY requested_at DESC, payment_id DESC
+      `, [bookingId]).then(([rows]) => rows.map(row => ({
+        ...row,
+        id: Number(row.id),
+        sourcePaymentId: Number(row.sourcePaymentId)
+      })))
     ]);
     const paidCents = decimalToCents(String(paymentRows[0].paid));
     const totalCents = decimalToCents(booking.total);
@@ -393,6 +460,7 @@ export class BookingsRepository {
         outstanding: centsToDecimal(Math.max(0, totalCents - paidCents))
       },
       review,
+      refunds,
       timeline
     };
   }
@@ -400,12 +468,20 @@ export class BookingsRepository {
   async cancelMine(bookingId, customerId, reason) {
     return this.#customerTransition(bookingId, customerId, async (connection, before) => {
       if (before.status === "CANCELLED") return transitionResponse(before);
-      if (!["PENDING_PAYMENT", "CONFIRMED", "LATE_ARRIVAL"].includes(before.status)) {
+      if (!["PENDING_PAYMENT", "PAYMENT_REVIEW", "CONFIRMED", "LATE_ARRIVAL"].includes(before.status)) {
         throw new ApiError(409, "BOOKING_TRANSITION_INVALID", "Booking can no longer be cancelled");
       }
       if (before.checkIn <= bangkokDate(new Date())) {
         throw new ApiError(409, "BOOKING_TRANSITION_INVALID", "Booking can only be cancelled before arrival day");
       }
+      const [pendingPayments] = before.status === "PAYMENT_REVIEW"
+        ? await connection.execute(`
+            SELECT payment_id AS id FROM Payment
+            WHERE booking_id = ? AND status = 'SUBMITTED'
+              AND transaction_type IN ('PAYMENT', 'DEPOSIT', 'FULL_PAYMENT')
+            ORDER BY payment_id FOR UPDATE
+          `, [bookingId])
+        : [[]];
       await connection.execute(`
         UPDATE Booking
         SET status = 'CANCELLED', status_changed_at = CURRENT_TIMESTAMP
@@ -418,7 +494,10 @@ export class BookingsRepository {
         action: "BOOKING_CANCELLED",
         actor: { type: "customer", id: customerId },
         before: transitionResponse(before),
-        after,
+        after: {
+          ...after,
+          pendingPaymentIds: pendingPayments.map(payment => Number(payment.id))
+        },
         reason
       });
       return after;
@@ -683,32 +762,44 @@ async function ensureInventory(connection, input, requestedByType, roomTypes) {
            AND b.check_in_date < ? AND b.check_out_date > ?
            AND ((b.status = 'PENDING_PAYMENT' AND b.hold_expires_at > CURRENT_TIMESTAMP)
                 OR b.status IN ('PAYMENT_REVIEW', 'CONFIRMED', 'CHECKED_IN', 'LATE_ARRIVAL'))) AS reservedRooms,
-        (SELECT COUNT(DISTINCT close_event.room_id)
-         FROM RoomEvent close_event
-         JOIN Room closed_room ON closed_room.room_id = close_event.room_id
-         WHERE closed_room.room_type_id = ?
-           AND close_event.event_type = 'ROOM_CLOSED'
-           AND COALESCE(close_event.effective_from, close_event.created_at) < ?
-           AND COALESCE(close_event.effective_to, '9999-12-31 23:59:59') > ?
-           AND NOT EXISTS (
-             SELECT 1 FROM RoomEvent reopen
-             WHERE reopen.related_event_id = close_event.room_event_id
-               AND reopen.event_type = 'ROOM_REOPENED'
-               AND COALESCE(reopen.effective_from, reopen.created_at) <= ?
-           )) AS closedRooms
+        (SELECT COUNT(DISTINCT blocked.room_id)
+         FROM (
+           SELECT close_event.room_id
+           FROM RoomEvent close_event
+           WHERE close_event.event_type = 'ROOM_CLOSED'
+             AND COALESCE(close_event.effective_from, close_event.created_at) < ?
+             AND COALESCE(close_event.effective_to, '9999-12-31 23:59:59') > ?
+             AND NOT EXISTS (
+               SELECT 1 FROM RoomEvent reopen
+               WHERE reopen.related_event_id = close_event.room_event_id
+                 AND reopen.event_type = 'ROOM_REOPENED'
+                 AND COALESCE(reopen.effective_from, reopen.created_at) <= ?
+             )
+           UNION
+           SELECT queued.room_id
+           FROM RoomEvent queued
+           WHERE queued.event_type = 'CLEANING_QUEUED'
+             AND NOT EXISTS (
+               SELECT 1 FROM RoomEvent done
+               WHERE done.related_event_id = queued.room_event_id
+                 AND done.event_type = 'CLEANING_COMPLETED'
+             )
+         ) blocked
+         JOIN Room blocked_room ON blocked_room.room_id = blocked.room_id
+         WHERE blocked_room.room_type_id = ?) AS blockedRooms
     `, [
       roomTypeId,
       roomTypeId,
       input.checkOut,
       input.checkIn,
-      roomTypeId,
       input.checkOut,
       input.checkIn,
-      input.checkIn
+      input.checkIn,
+      roomTypeId
     ]);
     const available = Number(inventory.totalRooms)
       - Number(inventory.reservedRooms)
-      - Number(inventory.closedRooms);
+      - Number(inventory.blockedRooms);
     if (available < requested) {
       throw new ApiError(409, "ROOM_INVENTORY_UNAVAILABLE", "Requested room inventory is no longer available", {
         roomTypeId,

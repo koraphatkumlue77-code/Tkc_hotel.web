@@ -92,6 +92,40 @@ test("customer books per-person facility rounds with live hold, guest, schedule,
       [{ startTime: "07:00:00", quantity: 2, amount: "1000.00" }]
     );
 
+    const repeatRound = await fixture.post(owner.cookie, `/api/bookings/${booking.id}/services`, {
+      serviceId: 3, bookingRoomId: booking.bookingRoomId, usageDate: booking.checkIn,
+      startTime: "09:00", quantity: 2
+    });
+    assert.equal(repeatRound.response.status, 201);
+    assert.equal(repeatRound.body.data.amount, "0.00");
+    assert.equal(repeatRound.body.data.passQuantity, 2);
+
+    const upgradedPass = await fixture.post(owner.cookie, `/api/bookings/${booking.id}/services`, {
+      serviceId: 3, bookingRoomId: booking.bookingRoomId, usageDate: booking.checkIn,
+      startTime: "12:00", quantity: 3
+    });
+    assert.equal(upgradedPass.response.status, 201);
+    assert.equal(upgradedPass.body.data.amount, "500.00");
+    assert.equal(upgradedPass.body.data.passQuantity, 3);
+    const [[passTotals]] = await fixture.pool.execute(
+      "SELECT CAST(service_subtotal_snapshot AS CHAR) AS services, CAST(total_snapshot AS CHAR) AS total FROM Booking WHERE booking_id = ?",
+      [booking.id]
+    );
+    assert.deepEqual(passTotals, { services: "1500.00", total: "2500.00" });
+
+    const reception = await fixture.employee("service.rounds.reception@example.test", "RECEPTION");
+    const staffDetail = await fixture.get(reception.cookie, `/api/staff/bookings/${booking.id}`);
+    assert.equal(staffDetail.response.status, 200);
+    assert.equal(staffDetail.body.data.serviceSubtotal, "1500.00");
+    assert.deepEqual(
+      staffDetail.body.data.services.map(({ name, startTime, quantity, amount }) => ({ name, startTime, quantity, amount })),
+      [
+        { name: "ฟิตเนส", startTime: "07:00:00", quantity: 2, amount: "1500.00" },
+        { name: "ฟิตเนส", startTime: "09:00:00", quantity: 2, amount: "0.00" },
+        { name: "ฟิตเนส", startTime: "12:00:00", quantity: 3, amount: "0.00" }
+      ]
+    );
+
     const tooMany = await fixture.post(owner.cookie, `/api/bookings/${booking.id}/services`, {
       serviceId: 4, bookingRoomId: booking.bookingRoomId, usageDate: booking.checkIn,
       startTime: "07:00", quantity: 4
@@ -153,7 +187,7 @@ test("concurrent facility requests cannot exceed the final shared seat", async (
   }
 });
 
-test("Reception records a fully paid post-Check-in service atomically and idempotently", async () => {
+test("Reception adds a post-Check-in service for Check-out settlement idempotently", async () => {
   const fixture = await createFixture();
   try {
     const owner = await fixture.customer("service.stay@example.test", "SERVICE-STAY");
@@ -170,7 +204,7 @@ test("Reception records a fully paid post-Check-in service atomically and idempo
     const first = await fixture.post(reception.cookie, `/api/staff/bookings/${booking.id}/services`, input);
     assert.equal(first.response.status, 201);
     assert.equal(first.body.data.amount, "300.00");
-    assert.equal(first.body.data.payment.status, "VERIFIED");
+    assert.equal(first.body.data.payment, undefined);
     const replay = await fixture.post(reception.cookie, `/api/staff/bookings/${booking.id}/services`, input);
     assert.equal(replay.response.status, 200);
     assert.equal(replay.body.meta.replayed, true);
@@ -180,7 +214,12 @@ test("Reception records a fully paid post-Check-in service atomically and idempo
         (SELECT COUNT(*) FROM BookingService WHERE booking_id = ?) AS services,
         (SELECT COUNT(*) FROM Payment WHERE booking_id = ? AND transaction_type = 'SERVICE_PAYMENT') AS payments
     `, [booking.id, booking.id]);
-    assert.deepEqual({ services: Number(counts.services), payments: Number(counts.payments) }, { services: 1, payments: 1 });
+    const [[amounts]] = await fixture.pool.execute(
+      "SELECT CAST(service_subtotal_snapshot AS CHAR) AS services, CAST(total_snapshot AS CHAR) AS total FROM Booking WHERE booking_id = ?",
+      [booking.id]
+    );
+    assert.deepEqual({ services: Number(counts.services), payments: Number(counts.payments) }, { services: 1, payments: 0 });
+    assert.deepEqual(amounts, { services: "300.00", total: "1300.00" });
   } finally {
     await fixture.close();
   }

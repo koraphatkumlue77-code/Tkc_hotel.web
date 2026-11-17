@@ -7,6 +7,44 @@ export class StaysRepository {
     this.pool = pool;
   }
 
+  async listAvailableRooms(bookingId, bookingRoomId) {
+    const [bookingRows] = await this.pool.execute(`
+      SELECT b.status, DATE_FORMAT(b.check_in_date, '%Y-%m-%d') AS checkIn,
+             DATE_FORMAT(b.check_out_date, '%Y-%m-%d') AS checkOut,
+             br.room_type_id AS roomTypeId, br.guest_count AS guestCount
+      FROM Booking b
+      JOIN BookingRoom br ON br.booking_id = b.booking_id
+      WHERE b.booking_id = ? AND br.booking_room_id = ? LIMIT 1
+    `, [bookingId, bookingRoomId]);
+    const bookingRoom = bookingRows[0];
+    if (!bookingRoom) throw new ApiError(404, "BOOKING_ROOM_NOT_FOUND", "Booked room was not found");
+    if (!["CONFIRMED", "LATE_ARRIVAL"].includes(bookingRoom.status)) {
+      throw new ApiError(409, "BOOKING_TRANSITION_INVALID", "Booking cannot be assigned in its current state");
+    }
+
+    const [rooms] = await this.pool.execute(`
+      SELECT r.room_id AS id, r.room_code AS code, r.room_type_id AS roomTypeId,
+             r.area, rt.type_name AS roomTypeName
+      FROM Room r
+      JOIN RoomType rt ON rt.room_type_id = r.room_type_id
+      WHERE r.current_status = 'AVAILABLE'
+        AND r.room_type_id = ? AND rt.capacity >= ?
+        AND NOT EXISTS (
+          SELECT 1
+          FROM RoomAssignment ra
+          JOIN BookingRoom other_br ON other_br.booking_room_id = ra.booking_room_id
+          JOIN Booking other_booking ON other_booking.booking_id = other_br.booking_id
+          WHERE ra.room_id = r.room_id
+            AND other_br.booking_room_id <> ?
+            AND ra.effective_from < ?
+            AND COALESCE(ra.effective_to, '9999-12-31 23:59:59') > ?
+            AND other_booking.status IN ('CONFIRMED', 'CHECKED_IN', 'LATE_ARRIVAL')
+        )
+      ORDER BY r.room_code
+    `, [bookingRoom.roomTypeId, bookingRoom.guestCount, bookingRoomId, bookingRoom.checkOut, bookingRoom.checkIn]);
+    return rooms.map((room) => ({ ...room, id: Number(room.id), roomTypeId: Number(room.roomTypeId) }));
+  }
+
   async assign(bookingId, input, principal) {
     return this.#transaction(async (connection) => {
       const booking = await lockBooking(connection, bookingId);
@@ -405,8 +443,9 @@ async function queueCleaning(connection, roomId, bookingRoomId, employeeId, reas
 }
 
 function ensureAssignmentRole(booking, principal) {
-  if (booking.channel === "ONLINE" && principal.role !== "superadmin") {
-    throw new ApiError(403, "ROLE_FORBIDDEN", "Only Superadmin can assign an online booking");
+  if (booking.channel === "ONLINE" && principal.role !== "superadmin"
+      && (principal.role !== "reception" || bangkokDate(new Date()) !== booking.checkIn)) {
+    throw new ApiError(403, "ROLE_FORBIDDEN", "Reception can assign an online booking only on its check-in date");
   }
 }
 

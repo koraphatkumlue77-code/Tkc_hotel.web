@@ -19,12 +19,16 @@ export class RoomsService {
       const totalRooms = Number(row.totalRooms);
       const reservedRooms = Number(row.reservedRooms);
       const closedRooms = Number(row.closedRooms);
+      const cleaningRooms = Number(row.cleaningRooms);
+      const blockedRooms = Number(row.blockedRooms);
       return {
         ...row,
         totalRooms,
         reservedRooms,
         closedRooms,
-        availableRooms: Math.max(0, totalRooms - reservedRooms - closedRooms)
+        cleaningRooms,
+        blockedRooms,
+        availableRooms: Math.max(0, totalRooms - reservedRooms - blockedRooms)
       };
     });
   }
@@ -33,10 +37,23 @@ export class RoomsService {
     const page = routeInteger(query.page ?? "1", "page", 1, 100000);
     const limit = routeInteger(query.limit ?? "50", "limit", 1, 100);
     const status = query.status === undefined ? null : String(query.status).toUpperCase();
+    const roomTypeId = query.roomTypeId === undefined
+      ? null
+      : routeInteger(query.roomTypeId, "roomTypeId", 1, Number.MAX_SAFE_INTEGER);
     if (status && !ROOM_STATUSES.includes(status)) validationError("status");
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Bangkok",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).format(new Date());
+    const [data, summary] = await Promise.all([
+      this.repository.listStaffRooms({ status, roomTypeId, limit, offset: (page - 1) * limit }),
+      this.repository.summarizeStaffRooms({ roomTypeId, today })
+    ]);
     return {
-      data: await this.repository.listStaffRooms({ status, limit, offset: (page - 1) * limit }),
-      meta: { page, limit }
+      data,
+      meta: { page, limit, summary }
     };
   }
 
