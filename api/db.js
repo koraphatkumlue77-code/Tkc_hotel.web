@@ -1,3 +1,4 @@
+// การเชื่อมต่อ MySQL ตั้งค่า DB_HOST/DB_USER/DB_PASSWORD/DB_NAME จาก api/.env ที่ createDatabasePool อ่าน
 import mysql from "mysql2/promise";
 
 const REQUIRED_DATABASE_VARIABLES = [

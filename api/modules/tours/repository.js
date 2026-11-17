@@ -1,3 +1,4 @@
+// SQL สำหรับ TourRound/TourReservation; การจองและยกเลิกรอบล็อกจำนวนที่นั่งใน transaction
 import { ApiError } from "../../middleware/errors.js";
 import { writeAudit } from "../auth/repository.js";
 import { centsToDecimal, decimalToCents } from "../bookings/money.js";
@@ -22,7 +23,7 @@ export class ToursRepository {
                    OR b.status IN ('PAYMENT_REVIEW','CONFIRMED','LATE_ARRIVAL','CHECKED_IN'))
              ) AS remainingSeats
       FROM TourRound tr JOIN Service s ON s.service_id = tr.service_id
-      WHERE tr.tour_date BETWEEN ? AND ? AND tr.status = 'OPEN' AND s.active = TRUE
+      WHERE tr.tour_date BETWEEN ? AND ? AND tr.status = 'OPEN' AND s.active = TRUE AND s.visible = TRUE
       ORDER BY tr.tour_date, tr.start_time, tr.tour_round_id
     `, [from, to]);
     return rows.map(roundRecord);

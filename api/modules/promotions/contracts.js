@@ -24,13 +24,33 @@ export function promotionInput(body) {
 
 export function attractionInput(body) {
   const value = requireObject(body);
+  const tripType = value.tripType;
+  if (tripType === undefined) {
+    const schedule = value.schedule ?? null;
+    if (schedule !== null && (!schedule || typeof schedule !== "object" || Array.isArray(schedule))) invalid("schedule");
+    if (schedule && JSON.stringify(schedule).length > 2000) invalid("schedule");
+    return {
+      tripType: null,
+      name: requireString("name", value.name, { max: 100 }),
+      description: optionalString(value.description, "description", 2000),
+      season: optionalString(value.season, "season", 30),
+      imageReference: optionalString(value.imageReference, "imageReference", 500),
+      schedule,
+      visible: boolean(value.visible, "visible"),
+      active: boolean(value.active, "active")
+    };
+  }
+  const destinationName = requireString("destinationName", value.destinationName ?? value.name, { max: 100 });
+  if (tripType !== "SUNSET" && tripType !== "NIGHT_MARKET") invalid("tripType");
   const schedule = value.schedule ?? null;
   if (schedule !== null || value.schedule !== undefined) {
     if (!schedule || typeof schedule !== "object" || Array.isArray(schedule)) invalid("schedule");
     if (JSON.stringify(schedule).length > 2000) invalid("schedule");
   }
   return {
-    name: requireString("name", value.name, { max: 100 }),
+    tripType,
+    destinationName,
+    name: `${tripType === "SUNSET" ? "ชมพระอาทิตย์ตก" : "เที่ยวตลาดกลางคืน"} - ${destinationName}`,
     description: optionalString(value.description, "description", 2000),
     season: optionalString(value.season, "season", 30),
     imageReference: optionalString(value.imageReference, "imageReference", 500),

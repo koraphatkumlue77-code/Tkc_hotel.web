@@ -1,3 +1,4 @@
+// HTTP endpoints สำหรับรายการบริการและเพิ่ม/ยกเลิกบริการใน Booking
 import { Router } from "express";
 
 import { requireRoles } from "../auth/session.js";

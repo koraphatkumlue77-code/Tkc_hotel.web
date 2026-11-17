@@ -1,3 +1,4 @@
+// HTTP endpoints สำหรับอัปโหลดหลักฐาน ตรวจ/รับชำระ และรายงานการเงิน
 import { Router } from "express";
 
 import { requireRoles } from "../auth/session.js";

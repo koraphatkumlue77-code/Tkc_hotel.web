@@ -1,3 +1,4 @@
+// SQL สำหรับ Promotion และ Service ประเภทสถานที่ท่องเที่ยว; ส่วนลดในใบจองถูก snapshot ที่ BookingPromotion
 import { ApiError } from "../../middleware/errors.js";
 import { writeAudit } from "../auth/repository.js";
 
@@ -46,28 +47,51 @@ export class PromotionsRepository {
     return rows.map(attractionRecord);
   }
 
+  async listManageableAttractions() {
+    const [rows] = await this.pool.execute(`${ATTRACTION_SELECT}
+      WHERE service_kind IN ('ATTRACTION', 'TOUR') ORDER BY id`);
+    return rows.map(attractionRecord);
+  }
+
   async saveAttraction(id, input, employeeId) {
     return this.#transaction(async (connection) => {
       let before = null;
       let resultId = id;
       if (id) {
         const [rows] = await connection.execute(`${ATTRACTION_SELECT}
-          WHERE service_id = ? AND service_kind = 'ATTRACTION' FOR UPDATE`, [id]);
+          WHERE service_id = ? AND service_kind IN ('ATTRACTION', 'TOUR') FOR UPDATE`, [id]);
         if (!rows[0]) throw new ApiError(404, "ATTRACTION_NOT_FOUND", "Attraction was not found");
         before = attractionRecord(rows[0]);
-        await connection.execute(`
-          UPDATE Service SET name = ?, description = ?, image_reference = ?, season = ?,
-            visible = ?, schedule_json = ?, active = ? WHERE service_id = ?
-        `, [input.name, input.description, input.imageReference, input.season,
-          input.visible, JSON.stringify(input.schedule), input.active, id]);
+        if (input.tripType) {
+          await connection.execute(`
+            UPDATE Service SET name = ?, service_kind = 'TOUR', charge_unit = 'PER_PERSON_PER_ROUND',
+              default_rate = 0, included_in_room = FALSE, description = ?, image_reference = ?, season = ?,
+              visible = ?, schedule_json = ?, active = ? WHERE service_id = ?
+          `, [input.name, input.description, input.imageReference, input.season,
+            input.visible, JSON.stringify(input.schedule), input.active, id]);
+        } else {
+          await connection.execute(`
+            UPDATE Service SET name = ?, description = ?, image_reference = ?, season = ?,
+              visible = ?, schedule_json = ?, active = ? WHERE service_id = ?
+          `, [input.name, input.description, input.imageReference, input.season,
+            input.visible, JSON.stringify(input.schedule), input.active, id]);
+        }
       } else {
-        const [result] = await connection.execute(`
-          INSERT INTO Service
-            (name, service_kind, description, image_reference, season, visible,
-             schedule_json, charge_unit, default_rate, included_in_room, active)
-          VALUES (?, 'ATTRACTION', ?, ?, ?, ?, ?, 'CONTENT', 0, FALSE, ?)
-        `, [input.name, input.description, input.imageReference, input.season,
-          input.visible, JSON.stringify(input.schedule), input.active]);
+        const [result] = input.tripType
+          ? await connection.execute(`
+              INSERT INTO Service
+                (name, service_kind, description, image_reference, season, visible,
+                 schedule_json, charge_unit, default_rate, included_in_room, active)
+              VALUES (?, 'TOUR', ?, ?, ?, ?, ?, 'PER_PERSON_PER_ROUND', 0, FALSE, ?)
+            `, [input.name, input.description, input.imageReference, input.season,
+              input.visible, JSON.stringify(input.schedule), input.active])
+          : await connection.execute(`
+              INSERT INTO Service
+                (name, service_kind, description, image_reference, season, visible,
+                 schedule_json, charge_unit, default_rate, included_in_room, active)
+              VALUES (?, 'ATTRACTION', ?, ?, ?, ?, ?, 'CONTENT', 0, FALSE, ?)
+            `, [input.name, input.description, input.imageReference, input.season,
+              input.visible, JSON.stringify(input.schedule), input.active]);
         resultId = Number(result.insertId);
       }
       const [afterRows] = await connection.execute(`${ATTRACTION_SELECT} WHERE service_id = ?`, [resultId]);

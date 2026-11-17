@@ -1,3 +1,4 @@
+// SQL สำหรับ Service, BookingService และ ServiceUsage รวมเพิ่ม/ยกเลิกบริการในใบจอง
 import { ApiError } from "../../middleware/errors.js";
 import { writeAudit } from "../auth/repository.js";
 import { centsToDecimal, decimalToCents } from "../bookings/money.js";

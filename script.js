@@ -2,6 +2,7 @@
 
 const $ = selector => document.querySelector(selector);
 
+// จุดเรียก API กลางของหน้าเว็บ: ปรับ cookie, header และการแปลง error ของคำขอได้ที่นี่
 async function apiFetch(path, options = {}) {
   const response = await fetch(path, {
     credentials: 'same-origin',
@@ -52,17 +53,22 @@ let currentLoginMode = 'ลูกค้า';
 
 const staffBookingTargets = {
   superadmin: { prefix: 'sa', selector: '#shared-booking-history-superadmin' },
+  accounting: { prefix: 'acc', selector: '#shared-booking-history-accounting' },
   reception: { prefix: 'rec', selector: '#shared-booking-history-reception' },
   executive: { prefix: 'exec', selector: '#shared-booking-history-executive' }
 };
+const scrollableBookingListRoles = new Set(['superadmin', 'accounting', 'reception', 'executive']);
 
+// ประวัติการจองพนักงาน: UI อยู่ที่นี่; API/SQL อยู่ api/modules/bookings (Booking, BookingRoom และตารางลูก)
 async function renderStaffBookingHistory(role) {
   const targetConfig = staffBookingTargets[role];
   const target = targetConfig && $(targetConfig.selector);
   if (!target) return;
   target.innerHTML = '<p>กำลังโหลดรายการจองจากฐานข้อมูล...</p>';
   try {
-    const { data, meta } = await apiFetch('/api/staff/bookings?page=1&limit=50');
+    const params = new URLSearchParams({ page: '1', limit: '50' });
+    if (role === 'accounting') params.set('status', 'PENDING_PAYMENT');
+    const { data, meta } = await apiFetch(`/api/staff/bookings?${params}`);
     const receptionTable = role === 'reception' ? $('#reception-booking-list') : null;
     if (receptionTable) {
       receptionTable.innerHTML = data.length ? data.map(booking => `
@@ -74,7 +80,7 @@ async function renderStaffBookingHistory(role) {
     }
     target.innerHTML = `
       <div class="admin-card-header">
-        <div><h3>รายการจองล่าสุด</h3><p>ข้อมูลลูกค้าและสถานะจากฐานข้อมูลจริง</p></div>
+        <div><h3>${role === 'accounting' ? 'รายการจองที่รอชำระเงิน' : 'รายการจองล่าสุด'}</h3><p>${role === 'accounting' ? 'เลือกยกเลิกได้เฉพาะรายการที่ยังไม่มีประวัติชำระหรือส่งสลิป' : 'ข้อมูลลูกค้าและสถานะจากฐานข้อมูลจริง'}</p></div>
         <div class="staff-actions">
           <span class="count-pill">${meta.total} รายการ</span>
           <button type="button" class="booking-outline" data-refresh-staff-bookings="${role}">รีเฟรช</button>
@@ -82,7 +88,8 @@ async function renderStaffBookingHistory(role) {
       </div>
       ${data.length ? `
         <div class="history-split-grid">
-          <div class="history-list">
+          <div class="history-list ${scrollableBookingListRoles.has(role) ? 'history-list-scroll' : ''} ${role === 'accounting' ? 'accounting-pending-booking-list' : ''}"
+            ${scrollableBookingListRoles.has(role) ? `tabindex="0" aria-label="${role === 'accounting' ? 'รายการจองที่รอชำระเงิน เลื่อนเพื่อดูรายการอื่น' : 'รายการจองล่าสุด เลื่อนเพื่อดูรายการอื่น'}"` : ''}>
             ${data.map((booking, index) => `
               <button type="button" class="history-item ${index === 0 ? 'active' : ''}"
                 data-staff-booking-id="${booking.id}" data-staff-booking-prefix="${targetConfig.prefix}">
@@ -94,10 +101,10 @@ async function renderStaffBookingHistory(role) {
                 <span class="status-badge ${booking.status === 'CONFIRMED' ? 'green' : 'yellow'}">${escapeHtml(booking.status)}</span>
               </button>`).join('')}
           </div>
-          <div class="history-detail-box" id="${targetConfig.prefix}-live-booking-detail">
+          <div class="history-detail-box ${scrollableBookingListRoles.has(role) && role !== 'accounting' ? 'history-detail-box-scroll' : ''}" id="${targetConfig.prefix}-live-booking-detail">
             <p>กำลังโหลดรายละเอียด...</p>
           </div>
-        </div>` : '<p>ยังไม่มีรายการจองในฐานข้อมูล</p>'}`;
+        </div>` : role === 'accounting' ? '<p>ไม่มีรายการจองที่รอชำระเงิน</p>' : '<p>ยังไม่มีรายการจองในฐานข้อมูล</p>'}`;
     if (data[0]) await loadStaffBookingDetail(data[0].id, targetConfig.prefix);
   } catch (error) {
     if (role === 'reception' && $('#reception-booking-list')) {
@@ -110,45 +117,94 @@ async function renderStaffBookingHistory(role) {
 async function loadStaffBookingDetail(bookingId, prefix) {
   const pane = $(`#${prefix}-live-booking-detail`);
   if (!pane) return;
+  pane.scrollTop = 0;
   pane.innerHTML = '<p>กำลังโหลดรายละเอียด...</p>';
   try {
     const { data: booking } = await apiFetch(`/api/staff/bookings/${bookingId}`);
     const serviceLines = (booking.services || []).map(item =>
-      `<div class="cost-line"><span>${escapeHtml(item.name)} · ${item.quantity} คน · ${String(item.startTime || '').slice(0, 5)} น.</span><strong>฿${money(Number(item.amount))}</strong></div>`);
+      `<div class="cost-line"><span>${escapeHtml(item.name)}${item.quantity ? ` · ${item.quantity} คน` : ''}${item.usageDate ? ` · ${escapeHtml(item.usageDate)}` : ''}${item.startTime ? ` · ${String(item.startTime).slice(0, 5)} น.` : ''}</span><strong>฿${money(Number(item.amount))}</strong></div>`);
     const tourLines = (booking.tours || []).map(item =>
-      `<div class="cost-line"><span>${escapeHtml(item.name)} · ${item.quantity} คน · ${escapeHtml(item.location || '')} · ${String(item.startTime || '').slice(0, 5)} น.</span><strong>ฟรี</strong></div>`);
+      `<div class="cost-line"><span>${escapeHtml(item.name)} · ${item.quantity} คน · ${escapeHtml(item.location || '')}${item.tourDate ? ` · ${escapeHtml(item.tourDate)}` : ''} · ${String(item.startTime || '').slice(0, 5)} น.</span><strong>${Number(item.amount) > 0 ? `฿${money(Number(item.amount))}` : 'ฟรี'}</strong></div>`);
     const extras = [...serviceLines, ...tourLines];
+    const bookingStatusLabels = {
+      PENDING_PAYMENT: 'รอชำระเงิน', PAYMENT_REVIEW: 'รอตรวจสอบการชำระเงิน',
+      CONFIRMED: 'ยืนยันแล้ว', LATE_ARRIVAL: 'แจ้งเข้าพักล่าช้า', CHECKED_IN: 'เช็คอินแล้ว',
+      CHECKED_OUT: 'เช็คเอาท์แล้ว', CANCELLED: 'ยกเลิกแล้ว', NO_SHOW: 'ไม่เข้าพัก'
+    };
+    const paymentTypeLabels = {
+      PAYMENT: 'ชำระเงิน', DEPOSIT: 'มัดจำ', BALANCE: 'ยอดคงเหลือ',
+      FULL_PAYMENT: 'ชำระเต็ม', SERVICE_PAYMENT: 'ค่าบริการ',
+      REFUND_REQUEST: 'คำขอคืนเงิน', REFUND_PAYOUT: 'จ่ายคืนเงิน'
+    };
+    const paymentStatusLabels = {
+      SUBMITTED: 'รอตรวจสอบ', VERIFIED: 'ตรวจสอบแล้ว', COMPLETED: 'สำเร็จ',
+      REJECTED: 'ไม่ผ่านการตรวจสอบ', APPROVED: 'อนุมัติแล้ว', CANCELLED: 'ยกเลิก'
+    };
+    const actionLabels = {
+      BOOKING_CREATED: 'สร้างรายการจอง', PAYMENT_REVIEW_STARTED: 'ส่งหลักฐาน รอตรวจสอบ',
+      PAYMENT_REVIEW_RESTARTED: 'ส่งหลักฐานใหม่ รอตรวจสอบ', PAYMENT_RECEIVED: 'รับชำระเงินแล้ว',
+      CONFIRMED: 'ยืนยันการจองแล้ว', CHECKED_IN: 'เช็คอินแล้ว', CHECKED_OUT: 'เช็คเอาท์แล้ว',
+      NO_SHOW_RECORDED: 'บันทึกไม่เข้าพัก', BOOKING_CANCELLED: 'ยกเลิกการจอง',
+      STAFF_BOOKING_CANCELLED_UNPAID: 'พนักงานยกเลิกการจองที่ยังไม่ชำระ'
+    };
+    const paymentMethodLabels = { BANK_TRANSFER: 'โอนธนาคาร', CASH: 'เงินสด', CARD: 'บัตร' };
+    const paymentLines = (booking.payments || []).map(payment => `
+      <div class="pay-slip-row">
+        <div><strong>PAY-${payment.id}</strong><small>${escapeHtml(paymentTypeLabels[payment.transactionType] || payment.transactionType)} · ${escapeHtml(paymentMethodLabels[payment.method] || payment.method || '-')} · ${escapeHtml(paymentStatusLabels[payment.status] || payment.status)}</small></div>
+        <strong>${payment.direction === 'OUT' ? '−' : ''}฿${money(Number(payment.amount))}</strong>
+      </div>`);
+    const timelineItems = (booking.timeline || []).map(item => {
+      const label = item.status
+        ? bookingStatusLabels[item.status] || item.status
+        : actionLabels[item.action] || String(item.action || '').replaceAll('_', ' ');
+      return `<li><span class="dot"></span><div><strong>${escapeHtml(label)}</strong><small>${escapeHtml(item.createdAt || '')}</small><small>ดำเนินการโดย ${escapeHtml(item.actorName || 'ระบบ')}</small>${item.reason ? `<small>หมายเหตุ: ${escapeHtml(item.reason)}</small>` : ''}</div></li>`;
+    });
+    const roomSummary = (booking.rooms || []).map(room =>
+      `${room.roomTypeName} · ${room.guestCount} คน${room.assignedRoomCode ? ` · ห้อง ${room.assignedRoomCode}` : ''}`).join(' / ');
+    const nights = Math.max(1, Math.round((Date.parse(`${booking.checkOut}T00:00:00Z`) - Date.parse(`${booking.checkIn}T00:00:00Z`)) / 86400000));
+    const roomLines = (booking.rooms || []).map(room =>
+      `<div class="cost-line"><span>${escapeHtml(room.roomTypeName)} · ${nights} คืน · ห้องพัก</span><strong>฿${money(Number(room.netAmount))}</strong></div>`);
+    const paid = Number(booking.payment?.paid || 0);
+    const total = Number(booking.total || 0);
     pane.innerHTML = `
       <div class="hd-top">
         <div>
           <small class="hd-code">BOOKING RECORD · ${escapeHtml(booking.bookingCode)}</small>
           <h4>${escapeHtml(booking.customer.fullName)}</h4>
           <p>${escapeHtml(booking.customer.email || 'ไม่มีอีเมล')} · ${escapeHtml(booking.customer.phone || '')}</p>
+          <small class="hd-guest-id">รหัสลูกค้า ${escapeHtml(booking.customer.id)}</small>
         </div>
         <span class="status-badge ${booking.status === 'CONFIRMED' ? 'green' : 'yellow'}">${escapeHtml(booking.status)}</span>
       </div>
       <div class="hd-info-cards">
-        <div class="hd-mini-card"><small>ช่องทาง</small><strong>${escapeHtml(booking.channel)}</strong></div>
+        <div class="hd-mini-card"><small>ห้องพัก</small><strong>${escapeHtml(roomSummary || 'ไม่มีข้อมูลห้อง')}</strong></div>
         <div class="hd-mini-card"><small>Check-in</small><strong>${escapeHtml(booking.checkIn)}</strong></div>
         <div class="hd-mini-card"><small>Check-out</small><strong>${escapeHtml(booking.checkOut)}</strong></div>
       </div>
+      ${['reception', 'superadmin'].includes(currentStaffSession?.role) ? `<div class="staff-actions booking-detail-actions">
+        ${['CONFIRMED', 'LATE_ARRIVAL'].includes(booking.status) ? `<button type="button" class="btn-dark-pill" data-open-settlement="CHECK_IN" data-booking-code="${escapeHtml(booking.bookingCode)}">Check-in</button><button type="button" class="booking-outline" data-stay-action="no-show" data-stay-booking="${booking.id}" data-booking-prefix="${prefix}">No-show</button>` : ''}
+        ${booking.status === 'CHECKED_IN' ? `<button type="button" class="btn-dark-pill" data-open-settlement="CHECK_OUT" data-booking-code="${escapeHtml(booking.bookingCode)}">Check-out</button><button type="button" class="booking-outline" data-open-staff-service="${booking.id}" data-booking-prefix="${prefix}">เพิ่มบริการเสริม</button>` : ''}
+      </div>` : ''}
       <div class="hd-bottom-grid">
         <div>
           <h5>ห้องที่จอง</h5>
-          ${(booking.rooms || []).map(room => `<div class="cost-line"><span>${escapeHtml(room.roomTypeName)} · ${room.guestCount} คน</span><strong>${room.assignedRoomCode ? escapeHtml(room.assignedRoomCode) : 'ยังไม่จัดห้อง'}</strong></div>
+          ${roomLines.join('')}
+          ${(booking.rooms || []).map(room => `<div class="cost-line"><span>${escapeHtml(room.roomTypeName)} · ${room.guestCount} คน</span><strong>${room.assignedRoomCode ? `ห้อง ${escapeHtml(room.assignedRoomCode)}` : 'ยังไม่จัดห้อง'}</strong></div>
             ${!room.assignedRoomId && ['reception', 'superadmin'].includes(currentStaffSession?.role) && ['CONFIRMED', 'LATE_ARRIVAL'].includes(booking.status)
               ? `<button type="button" class="booking-outline" data-assign-booking="${booking.id}" data-booking-room="${room.id}" data-room-type="${room.roomTypeId}" data-booking-prefix="${prefix}">จัดห้อง</button>` : ''}`).join('') || '<p>ไม่มีข้อมูลห้อง</p>'}
           <h5>บริการเสริมและทริป</h5>
           ${extras.join('') || '<p>ยังไม่มีบริการเสริมหรือทริป</p>'}
-          <div class="cost-line"><span>ค่าบริการที่เก็บตอน Check-out</span><strong>฿${money(Number(booking.serviceSubtotal))}</strong></div>
+          ${Number(booking.discountTotal) > 0 ? `<div class="cost-line"><span>ส่วนลด</span><strong>−฿${money(Number(booking.discountTotal))}</strong></div>` : ''}
           <div class="cost-total"><span>ยอดรวม</span><strong>฿${money(Number(booking.total))}</strong></div>
+          <h5 class="mt-16">ประวัติการชำระเงิน</h5>
+          ${paymentLines.join('') || '<p>ยังไม่มีรายการชำระเงิน</p>'}
+          <p class="paid-summary">ชำระแล้ว ฿${money(paid)} / ฿${money(total)}${Number(booking.payment?.outstanding || 0) > 0 ? ` · คงเหลือ ฿${money(Number(booking.payment.outstanding))}` : ''}</p>
         </div>
-        <div><h5>สถานะปัจจุบัน</h5><p>${escapeHtml(booking.status)}</p>
-          ${['reception', 'superadmin'].includes(currentStaffSession?.role) ? `<div class="staff-actions">
-            ${['CONFIRMED', 'LATE_ARRIVAL'].includes(booking.status) ? `<button type="button" class="btn-dark-pill" data-open-settlement="CHECK_IN" data-booking-code="${escapeHtml(booking.bookingCode)}">Check-in</button><button type="button" class="booking-outline" data-stay-action="no-show" data-stay-booking="${booking.id}" data-booking-prefix="${prefix}">No-show</button>` : ''}
-            ${booking.status === 'CHECKED_IN' ? `<button type="button" class="btn-dark-pill" data-open-settlement="CHECK_OUT" data-booking-code="${escapeHtml(booking.bookingCode)}">Check-out</button>` : ''}
-            ${booking.status === 'CHECKED_IN' ? `<button type="button" class="booking-outline" data-open-staff-service="${booking.id}" data-booking-prefix="${prefix}">เพิ่มบริการเสริม</button>` : ''}
-          </div>` : ''}
+        <div><h5>ลำดับสถานะย้อนหลัง</h5>
+          ${timelineItems.length ? `<ul class="timeline-list">${timelineItems.join('')}</ul>` : '<p>ยังไม่มีประวัติสถานะ</p>'}
+          <h5 class="mt-16">สถานะปัจจุบัน</h5><p>${escapeHtml(bookingStatusLabels[booking.status] || booking.status)}</p>
+          ${booking.canStaffCancelUnpaid && ['reception', 'accounting', 'superadmin', 'executive'].includes(currentStaffSession?.role)
+            ? `<button type="button" class="booking-outline" data-cancel-unpaid-booking="${booking.id}" data-booking-prefix="${prefix}">ยกเลิกจอง (ยังไม่ส่งสลิป)</button>` : ''}
         </div>
       </div>`;
   } catch (error) {
@@ -226,6 +282,21 @@ document.addEventListener('click', event => {
   $('#reception-settlement-preview')?.click();
 });
 
+document.addEventListener('click', async event => {
+  const button = event.target.closest('[data-cancel-unpaid-booking]');
+  if (!button || !window.confirm('ยืนยันยกเลิกการจองนี้? ระบบจะยกเลิกได้เฉพาะรายการที่ไม่มีประวัติชำระหรือส่งสลิป และจะไม่สร้างรายการคืนเงิน')) return;
+  button.disabled = true;
+  try {
+    await apiFetch(`/api/staff/bookings/${button.dataset.cancelUnpaidBooking}/cancel-unpaid`, { method: 'POST', body: JSON.stringify({}) });
+    toast('ยกเลิกการจองที่ยังไม่ส่งสลิปแล้ว ไม่มีการสร้างรายการคืนเงิน');
+    await renderStaffBookingHistory(currentStaffSession.role);
+    if (currentStaffSession.role === 'accounting') await renderAccountingPayments();
+  } catch (error) {
+    toast(error.message);
+    button.disabled = false;
+  }
+});
+
 const staffServiceForm = $('#staff-service-form');
 let staffServiceBooking = null;
 let staffServicePrefix = 'rec';
@@ -299,6 +370,7 @@ staffServiceForm?.addEventListener('submit', async event => {
 });
 
 // เปิดระบบพนักงานและล็อกสิทธิ์เฉพาะฝ่ายนั้น
+// เปิด dashboard ตาม role และเริ่มโหลดข้อมูลของแผนกนั้น
 function enterStaffSystem(staffUser) {
   currentStaffSession = staffUser;
 
@@ -365,10 +437,14 @@ let rooms = [];
 // bykoraphat: อัตราอาหารเช้าต่อห้องต่อวันตามประเภทห้อง
 const breakfastRate = room => room.breakfastRate ?? 0;
 const money = value => value.toLocaleString('th-TH');
+const roomStatusLabels = {
+  AVAILABLE: 'ว่าง', OCCUPIED: 'มีผู้เข้าพัก', NEEDS_CLEANING: 'รอทำความสะอาด', OUT_OF_SERVICE: 'ปิดปรับปรุง'
+};
 const escapeHtml = value => String(value).replace(/[&<>'"]/g, character => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
 })[character]);
 
+// แสดงข้อมูลประเภทห้องที่โหลดจาก GET /api/room-types ในหน้าลูกค้าและหน้าแอดมิน
 function renderCatalogConsumers() {
   const select = $('#room-type');
   select.innerHTML = `<option value="all">ทุกประเภทห้อง</option>${rooms
@@ -423,6 +499,7 @@ function renderRooms(list) {
   if (emptyState) emptyState.hidden = list.length > 0;
 }
 
+// โหลดประเภทห้อง/ห้องว่าง; API และ SQL อยู่ api/modules/rooms
 async function loadRoomCatalog() {
   const status = $('#results-status');
   renderRooms([]);
@@ -452,6 +529,127 @@ async function loadRoomCatalog() {
     status.textContent = `โหลดประเภทห้องไม่สำเร็จ: ${error.message}`;
   }
 }
+
+function promptRoomType(current = {}) {
+  const name = window.prompt('ชื่อประเภทห้อง', current.name || '');
+  if (name === null) return null;
+  const capacity = window.prompt('จำนวนผู้เข้าพักสูงสุด', current.capacity ?? '');
+  if (capacity === null) return null;
+  const pricePerNight = window.prompt('ราคาต่อคืน (บาท)', current.pricePerNight ?? current.price ?? '');
+  if (pricePerNight === null) return null;
+  const breakfastDailyRate = window.prompt('ราคาอาหารเช้าต่อห้องต่อวัน (บาท)', current.breakfastDailyRate ?? current.breakfastRate ?? '0');
+  if (breakfastDailyRate === null) return null;
+  return { name: name.trim(), capacity: Number(capacity), pricePerNight: pricePerNight.trim(), breakfastDailyRate: breakfastDailyRate.trim() };
+}
+
+$('#create-room-type')?.addEventListener('click', async buttonEvent => {
+  const button = buttonEvent.currentTarget;
+  const input = promptRoomType();
+  if (!input) return;
+  button.disabled = true;
+  try {
+    await apiFetch('/api/staff/room-types', { method: 'POST', body: JSON.stringify(input) });
+    await loadRoomCatalog();
+    toast('เพิ่มประเภทห้องแล้ว');
+  } catch (error) { toast(error.message); }
+  finally { button.disabled = false; }
+});
+
+$('#room-type-summary-body')?.addEventListener('click', async event => {
+  const button = event.target.closest('[data-edit-room-type]');
+  if (!button) return;
+  const current = rooms.find(room => String(room.id) === button.dataset.editRoomType);
+  if (!current) return toast('ไม่พบประเภทห้อง กรุณาโหลดหน้าใหม่');
+  const input = promptRoomType(current);
+  if (!input) return;
+  button.disabled = true;
+  try {
+    await apiFetch(`/api/staff/room-types/${current.id}`, { method: 'PATCH', body: JSON.stringify(input) });
+    await loadRoomCatalog();
+    toast('บันทึกประเภทห้องแล้ว');
+  } catch (error) { toast(error.message); }
+  finally { button.disabled = false; }
+});
+
+async function renderSuperadminRoomsApi() {
+  const target = $('#superadmin-room-list');
+  const roomTypeFilter = $('#superadmin-room-type-filter');
+  if (!target || !roomTypeFilter) return;
+  target.innerHTML = '<tr><td colspan="5">เลือกประเภทห้องเพื่อดูเลขห้อง</td></tr>';
+  try {
+    if (roomTypeFilter.options.length === 1) {
+      const { data: roomTypes } = await apiFetch('/api/room-types');
+      roomTypes.forEach(type => roomTypeFilter.add(new Option(type.name, type.id)));
+    }
+    const roomTypeId = roomTypeFilter.value;
+    if (!roomTypeId) return;
+
+    target.innerHTML = '<tr><td colspan="5">กำลังโหลดห้องจากฐานข้อมูล...</td></tr>';
+    const data = await loadAllStaffRooms(roomTypeId);
+    target.innerHTML = data.length ? data.map(room => `
+      <tr>
+        <td><strong>${escapeHtml(room.code)}</strong><small>${escapeHtml(room.area || 'ไม่ระบุพื้นที่')}</small></td>
+        <td>${escapeHtml(room.area || '—')}</td>
+        <td>${escapeHtml(room.roomTypeName)}</td>
+        <td><span class="status-badge ${room.status === 'AVAILABLE' ? 'green' : room.status === 'OUT_OF_SERVICE' ? 'red-soft' : 'yellow'}">${escapeHtml(roomStatusLabels[room.status] || room.status)}</span></td>
+        <td><button type="button" class="link-edit" data-edit-superadmin-room="${room.id}">แก้ไขห้อง</button></td>
+      </tr>`).join('') : '<tr><td colspan="5">ยังไม่มีห้องในฐานข้อมูล</td></tr>';
+  } catch (error) { target.innerHTML = `<tr><td colspan="5">${escapeHtml(error.message)}</td></tr>`; }
+}
+
+$('#superadmin-room-type-filter')?.addEventListener('change', renderSuperadminRoomsApi);
+
+async function loadAllStaffRooms(roomTypeId = null) {
+  const rooms = [];
+  for (let page = 1; page <= 100; page += 1) {
+    const params = new URLSearchParams({ page: String(page), limit: '100' });
+    if (roomTypeId !== null && roomTypeId !== '') params.set('roomTypeId', roomTypeId);
+    const { data } = await apiFetch(`/api/staff/rooms?${params}`);
+    rooms.push(...data);
+    if (data.length < 100) break;
+  }
+  return rooms;
+}
+
+async function saveRoomCatalog(room, update = false) {
+  const { data: roomTypes } = await apiFetch('/api/room-types');
+  const choices = roomTypes.map(type => `${type.id}=${type.name}`).join(', ');
+  const defaultTypeId = room?.roomTypeId || roomTypes[0]?.id || '';
+  const roomTypeId = window.prompt(`รหัสประเภทห้อง (${choices})`, String(defaultTypeId));
+  if (roomTypeId === null) return false;
+  const code = window.prompt('เลขห้อง', room?.code || '');
+  if (code === null) return false;
+  const area = window.prompt('พื้นที่/ชั้น (ถ้ามี)', room?.area || '');
+  if (area === null) return false;
+  const body = { roomTypeId: Number(roomTypeId), code: code.trim(), area: area.trim() || null };
+  if (update) body.expectedVersion = Number(room.statusVersion);
+  await apiFetch(update ? `/api/staff/rooms/${room.id}` : '/api/staff/rooms', {
+    method: update ? 'PATCH' : 'POST', body: JSON.stringify(body)
+  });
+  await renderSuperadminRoomsApi();
+  return true;
+}
+
+$('#create-room')?.addEventListener('click', async event => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  try { if (await saveRoomCatalog()) toast('เพิ่มห้องแล้ว'); }
+  catch (error) { toast(error.message); }
+  finally { button.disabled = false; }
+});
+
+$('#superadmin-room-list')?.addEventListener('click', async event => {
+  const button = event.target.closest('[data-edit-superadmin-room]');
+  if (!button) return;
+  button.disabled = true;
+  try {
+    const data = await loadAllStaffRooms($('#superadmin-room-type-filter').value);
+    const room = data.find(item => String(item.id) === button.dataset.editSuperadminRoom);
+    if (!room) throw new Error('ไม่พบห้อง กรุณาโหลดหน้าใหม่');
+    if (await saveRoomCatalog(room, true)) toast('บันทึกข้อมูลห้องแล้ว');
+  } catch (error) { toast(error.message); }
+  finally { button.disabled = false; }
+});
 
 loadRoomCatalog();
 
@@ -630,6 +828,7 @@ function renderBreakfastDates() {
   $('#breakfast-dates').hidden = !breakfastToggle.checked || days.length === 0;
 }
 
+// คำนวณยอดเพื่อแสดงในฟอร์มเท่านั้น; การคิดราคาและบันทึกยอดจริงอยู่ฝั่ง API
 function bookingAmounts() {
   const nights = validStay(modalIn.value, modalOut.value)
     ? Math.round((parseDate(modalOut.value) - parseDate(modalIn.value)) / 86400000)
@@ -706,6 +905,15 @@ bookingForm.addEventListener('submit', async event => {
     return;
   }
   const amounts = bookingAmounts();
+  const promotionCodes = ($('#booking-promotion-codes')?.value || '')
+    .split(',').map(code => code.trim().toUpperCase()).filter(Boolean);
+  if (promotionCodes.length > 10 || new Set(promotionCodes).size !== promotionCodes.length) {
+    bookingError.textContent = promotionCodes.length > 10
+      ? 'ใส่รหัสโปรโมชันได้ไม่เกิน 10 รหัส'
+      : 'มีรหัสโปรโมชันซ้ำ กรุณาตรวจสอบอีกครั้ง';
+    bookingError.hidden = false;
+    return;
+  }
   if (breakfastToggle.checked && !amounts.breakfastDays) {
     bookingError.textContent = 'กรุณาเลือกวันอาหารเช้าอย่างน้อยหนึ่งวัน';
     bookingError.hidden = false;
@@ -728,13 +936,13 @@ bookingForm.addEventListener('submit', async event => {
           guestCount: guests
         })),
         breakfastDates,
-        promotionCodes: [],
+        promotionCodes,
         paymentChoice: bookingForm.elements.payment_choice.value
       })
     });
     $('#booking-dialog').close();
     bookingForm.reset();
-    toast(`สร้างใบจอง ${data.bookingCode} สำเร็จ ยอดที่ต้องชำระ ฿${money(Number(data.paymentDue))}`);
+    toast(`สร้างใบจอง ${data.bookingCode} สำเร็จ · ส่วนลด ฿${money(Number(data.discountTotal))} · ยอดที่ต้องชำระ ฿${money(Number(data.paymentDue))}`);
     await openMyBookings();
   } catch (error) {
     bookingError.textContent = error.code === 'ROOM_INVENTORY_UNAVAILABLE'
@@ -820,6 +1028,7 @@ const paymentStatuses = {
 const myBookingsList = $('#my-bookings-list');
 let myBookingsRefreshInFlight = false;
 
+// แสดงรายการจองลูกค้าและการกระทำต่อรายการ; ข้อมูลอ่านจาก Booking API
 function renderMyBookings(bookings, focusReviewBookingId = null) {
   myBookingsList.innerHTML = bookings.length ? bookings.map(booking => {
     const effectiveStatus = booking.effectiveStatus || booking.status;
@@ -842,11 +1051,14 @@ function renderMyBookings(bookings, focusReviewBookingId = null) {
         <button type="submit" class="btn-dark-pill">${retryEvent ? 'ส่งตรวจอีกครั้ง' : 'ส่งหลักฐานให้บัญชีตรวจ'}</button>
         <p class="demo-note" role="status"></p>
       </form>` : '';
+    const canCancelTours = ['PENDING_PAYMENT', 'PAYMENT_REVIEW', 'CONFIRMED', 'LATE_ARRIVAL', 'CHECKED_IN'].includes(effectiveStatus);
     const extras = [
-      ...(booking.services || []).filter(item => item.status === 'SELECTED').map(item =>
-        `<li><strong>${escapeHtml(item.name)}</strong> · ${item.quantity} คน · ${String(item.startTime || '').slice(0, 5)} น. · ${money(Number(item.amount))} บาท</li>`),
+      ...(booking.services || []).filter(item => item.status === 'SELECTED').map(item => {
+        return `<li><strong>${escapeHtml(item.name)}</strong> · ${item.quantity} คน · ${String(item.startTime || '').slice(0, 5)} น. · ${money(Number(item.amount))} บาท</li>`;
+      }),
       ...(booking.tours || []).map(item =>
-        `<li><strong>${escapeHtml(item.name)}</strong> · ${item.quantity} คน · ${escapeHtml(item.location || '')} · ${String(item.startTime).slice(0, 5)} น. · ฟรี</li>`)
+        `<li><strong>${escapeHtml(item.name)}</strong>${item.participantName ? ` · ${escapeHtml(item.participantName)}` : ''} · ${escapeHtml(item.location || '')} · ${String(item.startTime || '').slice(0, 5)} น. · ฟรี${canCancelTours
+          ? ` <button type="button" class="booking-outline" data-cancel-tour="${Number(item.id)}" data-cancel-tour-booking="${Number(booking.id)}">ยกเลิกที่นั่งนี้</button>` : ''}</li>`)
     ];
     const extrasBlock = extras.length
       ? `<div class="booking-extras"><strong>บริการและทริปที่จอง</strong><ul>${extras.join('')}</ul></div>`
@@ -863,6 +1075,9 @@ function renderMyBookings(bookings, focusReviewBookingId = null) {
           ${refund.rejectionReason ? `<small>เหตุผล: ${escapeHtml(refund.rejectionReason)}</small>` : ''}
         `).join('')}</div>`
       : '';
+    const promotionBlock = Number(booking.discountTotal) > 0
+      ? `<div class="booking-extras"><strong>โปรโมชัน ${escapeHtml(booking.promotionCodes || '')}</strong><p>ส่วนลด ฿${money(Number(booking.discountTotal))}</p></div>`
+      : '';
     return `
       <article class="customer-booking-card">
         <div class="customer-booking-heading">
@@ -873,6 +1088,7 @@ function renderMyBookings(bookings, focusReviewBookingId = null) {
         <ul>${booking.rooms.map(room => `<li>${escapeHtml(room.roomTypeName)} · ${room.guestCount} คน</li>`).join('')}</ul>
         ${extrasBlock}
         ${hold}
+        ${promotionBlock}
         <dl class="booking-amounts">
           <div><dt>ยอดรวมจากระบบ</dt><dd>${money(Number(booking.total))} บาท</dd></div>
           <div><dt>ชำระแล้ว</dt><dd>${money(Number(booking.payment.paid))} บาท</dd></div>
@@ -949,18 +1165,30 @@ async function promptForPendingCheckoutReview() {
 }
 
 myBookingsList.addEventListener('click', async event => {
-  const button = event.target.closest('[data-cancel-booking]');
+  const button = event.target.closest('[data-cancel-booking], [data-cancel-booking-service], [data-cancel-tour]');
   if (!button) return;
-  if (button.dataset.cancelPaymentReview === 'true' && !window.confirm(
-    'ยืนยันยกเลิกการจอง? หลักฐานโอนที่ส่งแล้วจะยังอยู่ในคิวบัญชี หากตรวจพบว่าได้รับเงินจริง ฝ่ายบัญชีจะดำเนินการคืนเงิน'
-  )) return;
+  const cancelBooking = button.hasAttribute('data-cancel-booking');
+  const cancelService = button.hasAttribute('data-cancel-booking-service');
+  const confirmMessage = cancelBooking && button.dataset.cancelPaymentReview === 'true'
+    ? 'ยืนยันยกเลิกการจอง? หลักฐานโอนที่ส่งแล้วจะยังอยู่ในคิวบัญชี หากตรวจพบว่าได้รับเงินจริง ฝ่ายบัญชีจะดำเนินการคืนเงิน'
+    : cancelBooking
+    ? 'ยืนยันยกเลิกการจองทั้งหมดหรือไม่?'
+    : cancelService
+      ? 'ยืนยันยกเลิกบริการเสริมรายการนี้ทั้งหมดหรือไม่?'
+      : 'ยืนยันยกเลิกที่นั่งทัวร์ของผู้เข้าร่วมรายนี้หรือไม่?';
+  if (!window.confirm(confirmMessage)) return;
   button.disabled = true;
   try {
-    await apiFetch(`/api/bookings/${button.dataset.cancelBooking}/cancel`, {
+    const endpoint = cancelBooking
+      ? `/api/bookings/${button.dataset.cancelBooking}/cancel`
+      : cancelService
+        ? `/api/bookings/${button.dataset.cancelServiceBooking}/services/${button.dataset.cancelBookingService}/cancel`
+        : `/api/bookings/${button.dataset.cancelTourBooking}/tours/${button.dataset.cancelTour}/cancel`;
+    await apiFetch(endpoint, {
       method: 'POST',
       body: JSON.stringify({ reason: 'ลูกค้ายกเลิกผ่านหน้าเว็บไซต์' })
     });
-    toast('ยกเลิกการจองแล้ว');
+    toast(cancelBooking ? 'ยกเลิกการจองแล้ว' : cancelService ? 'ยกเลิกบริการเสริมแล้ว' : 'ยกเลิกที่นั่งทัวร์แล้ว');
     await openMyBookings();
   } catch (error) {
     toast(error.message);
@@ -1252,6 +1480,7 @@ document.addEventListener('click', event => {
   document.querySelector(`[data-facility="${button.dataset.bookingFacility}"]`)?.click();
 });
 
+// โหลดตัวเลือกบริการ/ทริปของลูกค้า; แก้กติกาบันทึกใน api/modules/services หรือ tours
 async function facilityBookingOptions(kind) {
   const { data } = await apiFetch('/api/bookings/mine?limit=50');
   const details = await Promise.all(data.map(item => apiFetch(`/api/bookings/${item.id}`).then(result => result.data)));
@@ -1288,8 +1517,8 @@ function facilityRoundRemaining(round) {
 function facilityLocationName(round) {
   if (!round) return '';
   if (!tourFacilityKinds.has(activeFacilityContext.kind)) return '';
-  if (activeFacilityContext.kind === 'market') return 'ตลาดกลางคืน';
-  return round.name.replace(/^ชมพระอาทิตย์ตก\s*-\s*/, '');
+  const destination = round.name.replace(/^(?:ชมพระอาทิตย์ตก|เที่ยวตลาดกลางคืน)\s*-\s*/, '');
+  return destination || (activeFacilityContext.kind === 'market' ? 'ตลาดกลางคืน' : '');
 }
 
 function updateFacilityQuantity() {
@@ -1536,7 +1765,9 @@ const paymentImage = $('#payment-review-image');
 let reviewingPayment = null;
 let accountingQueue = [];
 
+// ตารางรายการรับชำระของฝ่ายบัญชี; การดึง/อนุมัติอยู่ api/modules/payments และตาราง Payment
 async function renderAccountingPayments() {
+  const countTarget = $('#accounting-payment-count');
   accountingPayments.innerHTML = '<tr><td colspan="7">กำลังโหลดธุรกรรมจากฐานข้อมูล...</td></tr>';
   try {
     const [submitted, verified] = await Promise.all([
@@ -1544,6 +1775,8 @@ async function renderAccountingPayments() {
       apiFetch('/api/accounting/payments?status=VERIFIED&page=1&limit=100')
     ]);
     accountingQueue = [...submitted.data, ...verified.data];
+    const totalCount = Number(submitted.meta.total || 0) + Number(verified.meta.total || 0);
+    if (countTarget) countTarget.textContent = `แสดง ${accountingQueue.length.toLocaleString('th-TH')} จาก ${totalCount.toLocaleString('th-TH')} รายการ`;
     const pendingTotal = submitted.data.reduce((sum, item) => sum + Number(item.amount), 0);
     $('#accounting-pending-total').textContent = `฿${money(pendingTotal)}`;
     $('#accounting-pending-count').textContent = `${submitted.meta.total} ธุรกรรม`;
@@ -1560,9 +1793,29 @@ async function renderAccountingPayments() {
           : `<button type="button" class="booking-outline" data-request-refund="${payment.id}" data-payment-amount="${payment.amount}">ขอคืนเงิน</button>`}</td>
       </tr>`).join('') : '<tr><td colspan="7">ไม่มีรายการชำระเงิน</td></tr>';
   } catch (error) {
+    if (countTarget) countTarget.textContent = 'โหลดจำนวนรายการไม่สำเร็จ';
     accountingPayments.innerHTML = `<tr><td colspan="7">${escapeHtml(error.message)}</td></tr>`;
   }
 }
+
+const accountingPaymentsCard = $('#accounting-payments-card');
+const accountingPaymentsExpand = $('#toggle-accounting-payments-fullscreen');
+function setAccountingPaymentsExpanded(expanded) {
+  accountingPaymentsCard?.classList.toggle('is-expanded', expanded);
+  if (accountingPaymentsExpand) {
+    accountingPaymentsExpand.setAttribute('aria-expanded', String(expanded));
+    accountingPaymentsExpand.textContent = expanded ? 'ย่อกลับ' : 'ขยายเต็มจอ';
+  }
+  document.body.classList.toggle('accounting-payments-expanded', expanded);
+}
+accountingPaymentsExpand?.addEventListener('click', () => {
+  setAccountingPaymentsExpanded(!accountingPaymentsCard?.classList.contains('is-expanded'));
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && accountingPaymentsCard?.classList.contains('is-expanded')) {
+    setAccountingPaymentsExpanded(false);
+  }
+});
 
 $('#refresh-accounting-payments')?.addEventListener('click', async event => {
   const button = event.currentTarget;
@@ -1642,6 +1895,7 @@ async function savePaymentReview(decision, reason = '') {
   }
 }
 
+// รายการโปรโมชันฝ่ายบริหาร; คำสั่งอ่าน/บันทึก MySQL อยู่ api/modules/promotions (Promotion)
 async function renderPromotions() {
   const target = $('#executive-promotion-list');
   if (!target) return;
@@ -1653,9 +1907,99 @@ async function renderPromotions() {
         <span class="promo-code">${escapeHtml(item.code)}</span>
         <strong>${escapeHtml(item.name)} · ลด ${escapeHtml(item.discountPercent)}%</strong>
         <small>${item.active ? 'เปิดใช้งาน' : 'ปิดใช้งาน'} · ลำดับ ${item.priority}</small>
+        <button type="button" class="link-edit" data-edit-promotion="${item.id}">แก้ไขโปรโมชัน</button>
       </div>`).join('') : '<p>ยังไม่มีโปรโมชั่น</p>';
   } catch (error) { target.innerHTML = `<p>${escapeHtml(error.message)}</p>`; }
 }
+
+function promptAttraction(current = {}) {
+  const inferredType = current.name?.startsWith('ชมพระอาทิตย์ตก - ')
+    ? '1' : current.name?.startsWith('เที่ยวตลาดกลางคืน - ') || current.name === 'เที่ยวตลาดกลางคืน' ? '2' : '';
+  const typeText = window.prompt('ประเภททริป\n1 = ชมพระอาทิตย์ตก\n2 = ตลาดกลางคืน', inferredType);
+  if (typeText === null) return null;
+  const tripType = typeText.trim() === '1' ? 'SUNSET' : typeText.trim() === '2' ? 'NIGHT_MARKET' : null;
+  if (!tripType) throw new Error('เลือกประเภททริปเป็น 1 (ชมพระอาทิตย์ตก) หรือ 2 (ตลาดกลางคืน)');
+  const previousDestination = current.name?.replace(/^(ชมพระอาทิตย์ตก|เที่ยวตลาดกลางคืน)\s*-\s*/, '') || '';
+  const destinationName = window.prompt('ชื่อสถานที่ที่จะไป', previousDestination);
+  if (destinationName === null) return null;
+  if (!destinationName.trim()) throw new Error('กรุณาระบุชื่อสถานที่');
+  const description = window.prompt('รายละเอียด', current.description || '');
+  if (description === null) return null;
+  const season = window.prompt('ฤดูกาล/ช่วงเวลา (ถ้ามี)', current.season || '');
+  if (season === null) return null;
+  const imageReference = window.prompt('ชื่อไฟล์หรือ URL รูปภาพ (ถ้ามี)', current.imageReference || '');
+  if (imageReference === null) return null;
+  const existingSchedule = typeof current.schedule === 'string'
+    ? (() => { try { return JSON.parse(current.schedule); } catch { return {}; } })()
+    : current.schedule || {};
+  const schedule = {
+    ...existingSchedule,
+    location: destinationName.trim(),
+    times: tripType === 'SUNSET'
+      ? ['15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30']
+      : ['19:30', '20:00', '20:30'],
+    capacity: Number.isSafeInteger(existingSchedule.capacity) ? existingSchedule.capacity : 10
+  };
+  const visibleText = window.prompt('การแสดงบนหน้าเว็บ (แสดง/ซ่อน)', current.visible === false ? 'ซ่อน' : 'แสดง');
+  if (visibleText === null) return null;
+  if (!['แสดง', 'ซ่อน'].includes(visibleText.trim())) throw new Error('เลือก “แสดง” หรือ “ซ่อน” เท่านั้น');
+  const activeText = window.prompt('สถานะข้อมูล (เปิด/ปิด)', current.active === false ? 'ปิด' : 'เปิด');
+  if (activeText === null) return null;
+  if (!['เปิด', 'ปิด'].includes(activeText.trim())) throw new Error('เลือก “เปิด” หรือ “ปิด” เท่านั้น');
+  return {
+    tripType, destinationName: destinationName.trim(),
+    name: `${tripType === 'SUNSET' ? 'ชมพระอาทิตย์ตก' : 'เที่ยวตลาดกลางคืน'} - ${destinationName.trim()}`,
+    description: description.trim() || null, season: season.trim() || null,
+    imageReference: imageReference.trim() || null, schedule,
+    visible: visibleText.trim() === 'แสดง', active: activeText.trim() === 'เปิด'
+  };
+}
+
+async function renderSuperadminAttractions() {
+  const target = $('#superadmin-activity-list');
+  if (!target) return;
+  target.innerHTML = '<p>กำลังโหลดสถานที่ท่องเที่ยวจากฐานข้อมูล...</p>';
+  try {
+    const { data } = await apiFetch('/api/staff/attractions');
+    target.innerHTML = data.length ? data.map(item => `
+      <div class="facility-admin-item">
+        <div class="fa-icon bg-cyan" aria-hidden="true">📍</div>
+        <div class="fa-info"><strong>${escapeHtml(item.name)}</strong><span>${item.serviceKind === 'TOUR' ? (item.name.startsWith('ชมพระอาทิตย์ตก') ? 'ทริปชมพระอาทิตย์ตก' : 'ทริปตลาดกลางคืน') : 'สถานที่ท่องเที่ยว'}${item.season ? ` · ${escapeHtml(item.season)}` : ''}</span></div>
+        <span class="status-badge ${item.active && item.visible ? 'green' : 'yellow'}">${item.active && item.visible ? 'เปิดแสดง' : 'ปิด/ซ่อน'}</span>
+        <button type="button" class="link-edit" data-edit-attraction="${item.id}">แก้ไข</button>
+      </div>`).join('') : '<p>ยังไม่มีสถานที่ท่องเที่ยวในฐานข้อมูล</p>';
+  } catch (error) { target.innerHTML = `<p>${escapeHtml(error.message)}</p>`; }
+}
+
+$('#create-attraction')?.addEventListener('click', async event => {
+  const button = event.currentTarget;
+  try {
+    const input = promptAttraction();
+    if (!input) return;
+    button.disabled = true;
+    await apiFetch('/api/staff/attractions', { method: 'POST', body: JSON.stringify(input) });
+    await renderSuperadminAttractions();
+    toast('เพิ่มสถานที่ท่องเที่ยวแล้ว');
+  } catch (error) { toast(error.message); }
+  finally { button.disabled = false; }
+});
+
+$('#superadmin-activity-list')?.addEventListener('click', async event => {
+  const button = event.target.closest('[data-edit-attraction]');
+  if (!button) return;
+  button.disabled = true;
+  try {
+    const { data } = await apiFetch('/api/staff/attractions');
+    const current = data.find(item => String(item.id) === button.dataset.editAttraction);
+    if (!current) throw new Error('ไม่พบสถานที่นี้ กรุณาโหลดรายการใหม่');
+    const input = promptAttraction(current);
+    if (!input) return;
+    await apiFetch(`/api/staff/attractions/${current.id}`, { method: 'PATCH', body: JSON.stringify(input) });
+    await renderSuperadminAttractions();
+    toast('บันทึกสถานที่ท่องเที่ยวแล้ว');
+  } catch (error) { toast(error.message); }
+  finally { button.disabled = false; }
+});
 
 async function renderRefunds(targetId, role) {
   const target = $(`#${targetId}`);
@@ -1710,6 +2054,51 @@ $('#create-promotion')?.addEventListener('click', async () => {
   } catch (error) { toast(error.message); }
 });
 
+$('#executive-promotion-list')?.addEventListener('click', async event => {
+  const button = event.target.closest('[data-edit-promotion]');
+  if (!button) return;
+
+  button.disabled = true;
+  try {
+    const { data } = await apiFetch('/api/staff/promotions');
+    const promotion = data.find(item => String(item.id) === button.dataset.editPromotion);
+    if (!promotion) throw new Error('ไม่พบโปรโมชันนี้แล้ว กรุณาโหลดรายการใหม่');
+
+    const code = window.prompt('รหัสโปรโมชัน', promotion.code);
+    if (code === null) return;
+    const name = window.prompt('ชื่อโปรโมชัน', promotion.name);
+    if (name === null) return;
+    const discountPercent = window.prompt('เปอร์เซ็นต์ส่วนลด', promotion.discountPercent);
+    if (discountPercent === null) return;
+    const priorityValue = window.prompt('ลำดับการใช้ (ตัวเลข)', String(promotion.priority));
+    if (priorityValue === null) return;
+    const validFrom = window.prompt('เริ่มใช้ (วันเวลา ISO; เว้นว่างถ้าไม่กำหนด)', promotion.validFrom || '');
+    if (validFrom === null) return;
+    const validUntil = window.prompt('สิ้นสุด (วันเวลา ISO; เว้นว่างถ้าไม่กำหนด)', promotion.validUntil || '');
+    if (validUntil === null) return;
+    const activeValue = window.prompt('สถานะโปรโมชัน (เปิด/ปิด)', promotion.active ? 'เปิด' : 'ปิด');
+    if (activeValue === null) return;
+    if (!['เปิด', 'ปิด'].includes(activeValue.trim())) throw new Error('สถานะต้องเป็น “เปิด” หรือ “ปิด”');
+
+    await apiFetch(`/api/staff/promotions/${promotion.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        code,
+        name,
+        discountPercent,
+        priority: Number(priorityValue),
+        validFrom: validFrom.trim() || null,
+        validUntil: validUntil.trim() || null,
+        active: activeValue.trim() === 'เปิด'
+      })
+    });
+    await renderPromotions();
+    toast('บันทึกการแก้ไขโปรโมชันแล้ว');
+  } catch (error) {
+    toast(error.message);
+  } finally { button.disabled = false; }
+});
+
 $('#approve-slip').addEventListener('click', () => savePaymentReview('approve'));
 $('#reject-slip-form').addEventListener('submit', event => {
   event.preventDefault();
@@ -1741,6 +2130,90 @@ async function renderFinancialSummary(targetId) {
   }
 }
 
+async function loadAllAccountingPayments() {
+  const payments = [];
+  for (let page = 1; page <= 100; page += 1) {
+    const response = await apiFetch(`/api/accounting/payments?page=${page}&limit=100`);
+    payments.push(...response.data);
+    if (response.data.length < 100) break;
+  }
+  return payments;
+}
+
+async function renderExecutivePayments() {
+  const target = $('#executive-payment-list');
+  if (!target) return;
+  target.innerHTML = '<tr><td colspan="6">กำลังโหลดธุรกรรมจากฐานข้อมูล...</td></tr>';
+  try {
+    const payments = await loadAllAccountingPayments();
+    const transactionLabels = {
+      DEPOSIT: 'มัดจำ', FULL_PAYMENT: 'ชำระเต็ม', BALANCE_PAYMENT: 'ยอดคงเหลือ',
+      SERVICE_PAYMENT: 'บริการเสริม', REFUND_REQUEST: 'คำขอคืนเงิน', REFUND_PAYOUT: 'จ่ายคืน'
+    };
+    const statusLabels = { SUBMITTED: 'รอตรวจสอบ', VERIFIED: 'ตรวจสอบแล้ว', APPROVED: 'อนุมัติ', REJECTED: 'ไม่อนุมัติ', COMPLETED: 'เสร็จสิ้น' };
+    target.innerHTML = payments.length ? payments.map(payment => `
+      <tr>
+        <td><strong>PAY-${payment.id}</strong></td>
+        <td><strong>${escapeHtml(payment.booking.code)}</strong><small>${escapeHtml(payment.booking.status)}</small></td>
+        <td>${escapeHtml(payment.customer.name)}</td>
+        <td>${transactionLabels[payment.transactionType] || escapeHtml(payment.transactionType)}</td>
+        <td><strong>${payment.direction === 'OUT' ? '−' : ''}฿${money(Number(payment.amount))}</strong></td>
+        <td><span class="status-badge ${['VERIFIED', 'APPROVED', 'COMPLETED'].includes(payment.status) ? 'green' : payment.status === 'REJECTED' ? 'red-soft' : 'yellow'}">${statusLabels[payment.status] || escapeHtml(payment.status)}</span></td>
+      </tr>`).join('') : '<tr><td colspan="6">ยังไม่มีธุรกรรมในฐานข้อมูล</td></tr>';
+  } catch (error) { target.innerHTML = `<tr><td colspan="6">${escapeHtml(error.message)}</td></tr>`; }
+}
+
+function csvCell(value) {
+  const safe = String(value ?? '').replace(/^[=+@-]/, "'$&");
+  return `"${safe.replaceAll('"', '""')}"`;
+}
+
+$('#export-executive-report')?.addEventListener('click', async event => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  try {
+    const payments = await loadAllAccountingPayments();
+    const rows = [
+      ['เลขรายการ', 'รหัสการจอง', 'ลูกค้า', 'ประเภทธุรกรรม', 'ทิศทาง', 'วิธีชำระ', 'ยอดเงิน', 'สถานะ', 'วันที่ส่งรายการ'],
+      ...payments.map(payment => [
+        `PAY-${payment.id}`, payment.booking.code, payment.customer.name, payment.transactionType,
+        payment.direction === 'OUT' ? 'จ่ายออก' : 'รับเข้า', payment.method || '', payment.amount,
+        payment.status, payment.submittedAt || ''
+      ])
+    ];
+    const csv = `\uFEFF${rows.map(row => row.map(csvCell).join(',')).join('\r\n')}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `tkc-payment-report-${today}.csv`;
+    link.style.display = 'none';
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (error) { toast(`ส่งออกรายงานไม่สำเร็จ: ${error.message}`); }
+  finally { button.disabled = false; }
+});
+
+async function renderDashboardSummary() {
+  try {
+    const { data } = await apiFetch('/api/staff/dashboard-summary');
+    for (const element of document.querySelectorAll('[data-dashboard-stat]')) {
+      const key = element.dataset.dashboardStat;
+      if (key === 'occupancyPercent') element.textContent = `${data.occupancyPercent}%`;
+      else if (key === 'checkedInRooms') element.textContent = `${data.checkedInRooms} ห้อง`;
+      else if (key === 'arrivalsDueRooms') element.textContent = `${data.arrivalsDueRooms} ห้องรอเช็คอิน`;
+      else if (key === 'activitiesToday') element.textContent = `${data.activitiesToday} รายการ`;
+      else if (key === 'toursToday') element.textContent = `${data.toursToday} ทริปวันนี้`;
+      else if (key === 'monthlyNetRevenue') element.textContent = `฿${money(Number(data.monthlyNetRevenue))}`;
+    }
+  } catch (error) {
+    for (const element of document.querySelectorAll('[data-dashboard-stat]')) element.textContent = 'โหลดไม่สำเร็จ';
+    toast(`โหลดตัวเลขสรุปไม่สำเร็จ: ${error.message}`);
+  }
+}
+
+// แสดงยอดก่อน Check-in/Check-out; การรับเงินจริงและเปลี่ยนสถานะอยู่ API ฝั่ง server
 async function previewReceptionSettlement() {
   const form = $('#reception-payment-form');
   const summary = $('#reception-settlement-summary');
@@ -1946,6 +2419,7 @@ const receptionRoomList = $('#reception-room-list');
 const receptionRoomTypeFilter = $('#reception-room-type-filter');
 const cleaningQueue = $('#cleaning-queue');
 const repairRoomList = $('#repair-room-list');
+const repairRoomTypeFilter = $('#repair-room-type-filter');
 const damageDialog = $('#room-damage-dialog');
 const damagePreview = $('#room-damage-preview');
 let damageDraftUrl = null;
@@ -1985,6 +2459,7 @@ let apiRoomSummary = null;
 let apiDamageRoom = null;
 const apiDamageForm = $('#room-damage-form');
 
+// โหลดทะเบียนห้องพนักงาน; API/SQL อยู่ api/modules/rooms (Room, RoomType)
 async function loadStaffRoomsApi(roomTypeId = 'all') {
   const params = new URLSearchParams({ page: '1', limit: '100' });
   if (roomTypeId !== 'all') params.set('roomTypeId', roomTypeId);
@@ -2052,14 +2527,35 @@ async function renderCleaningSummaryApi() {
   } catch (error) { $('#reception-cleaning-list').textContent = error.message; }
 }
 
+async function renderReceptionActivities() {
+  const target = $('#reception-activity-summary');
+  if (!target) return;
+  target.innerHTML = '<p>กำลังโหลดรายการวันนี้...</p>';
+  try {
+    const { data } = await apiFetch('/api/staff/dashboard-summary');
+    const items = [
+      ...(data.serviceBreakdown || []).map(item => ({ ...item, kind: 'บริการ' })),
+      ...(data.tourBreakdown || []).map(item => ({ ...item, kind: 'ทริป' }))
+    ];
+    target.innerHTML = items.length ? items.map(item => `
+      <div class="service-mini-box">
+        <div><strong>${escapeHtml(item.name)}</strong><small>${item.bookingCount} รายการวันนี้</small></div>
+        <span class="status-badge green">${item.kind}</span>
+      </div>`).join('') : '<p>วันนี้ยังไม่มีรายการบริการหรือทริป</p>';
+  } catch (error) { target.innerHTML = `<p>${escapeHtml(error.message)}</p>`; }
+}
+
+// คิวแม่บ้านและปุ่มเริ่ม/เสร็จงาน; API บันทึก RoomEvent
 async function renderCleaningQueueApi() {
   cleaningQueue.innerHTML = '<p>กำลังโหลดคิวทำความสะอาด...</p>';
   try {
     const [cleaning, rooms, roomTypes] = await Promise.all([
       apiFetch('/api/housekeeping/cleaning'),
-      loadStaffRoomsApi(),
+      loadAllStaffRooms(),
       apiFetch('/api/room-types')
     ]);
+    // ตัวเลือกความเสียหายต้องเห็นห้องทุกประเภท; endpoint แบ่งหน้าไม่เกิน 100 ห้องต่อครั้ง
+    apiRoomRecords = rooms;
     const roomTypeChoice = $('#damage-room-type-choice');
     roomTypeChoice.replaceChildren(
       new Option('เลือกประเภทห้อง', ''),
@@ -2072,10 +2568,10 @@ async function renderCleaningQueueApi() {
       const selectedTypeId = Number(roomTypeChoice.value);
       const matchingRooms = rooms.filter(room => Number(room.roomTypeId) === selectedTypeId);
       roomChoice.replaceChildren(
-        new Option(selectedTypeId ? 'เลือกเลขห้อง' : 'เลือกประเภทห้องก่อน', ''),
+        new Option(selectedTypeId ? matchingRooms.length ? 'เลือกเลขห้อง' : 'ไม่มีห้องในประเภทนี้' : 'เลือกประเภทห้องก่อน', ''),
         ...matchingRooms.map(room => new Option(room.code, room.id))
       );
-      roomChoice.disabled = !selectedTypeId;
+      roomChoice.disabled = !selectedTypeId || !matchingRooms.length;
     };
     cleaningQueue.innerHTML = cleaning.data.length ? cleaning.data.map(item => `
       <div class="housekeeping-item staff-room-row">
@@ -2088,6 +2584,7 @@ async function renderCleaningQueueApi() {
   } catch (error) { cleaningQueue.innerHTML = `<p>${escapeHtml(error.message)}</p>`; }
 }
 
+// เปิดฟอร์มรายงานความเสียหาย; รายละเอียดอยู่ RoomEvent และรูปอยู่ private storage
 function openApiDamage(roomId) {
   apiDamageRoom = apiRoomRecords.find(room => room.id === Number(roomId));
   if (!apiDamageRoom) return;
@@ -2164,17 +2661,28 @@ async function activeClosureForRoom(roomId) {
 }
 
 async function renderRepairRoomsApi() {
-  repairRoomList.innerHTML = '<p>กำลังโหลดสถานะห้อง...</p>';
+  repairRoomList.innerHTML = '<p>เลือกประเภทห้องเพื่อดูเลขห้อง</p>';
   try {
-    const rooms = await loadStaffRoomsApi();
+    if (repairRoomTypeFilter.options.length === 1) {
+      const { data: roomTypes } = await apiFetch('/api/room-types');
+      roomTypes.forEach(type => repairRoomTypeFilter.add(new Option(type.name, type.id)));
+    }
+    await renderDamageReportsApi($('#executive-damage-list'));
+    const roomTypeId = repairRoomTypeFilter.value;
+    if (!roomTypeId) return;
+
+    repairRoomList.innerHTML = '<p>กำลังโหลดเลขห้อง...</p>';
+    const rooms = await loadAllStaffRooms(roomTypeId);
+    apiRoomRecords = rooms;
     repairRoomList.innerHTML = rooms.map(room => `
       <div class="housekeeping-item staff-room-row">
         <div><strong>ห้อง ${escapeHtml(room.code)}</strong><small>${escapeHtml(room.roomTypeName)} · ${escapeHtml(room.status)}</small></div>
         ${room.status !== 'OCCUPIED' ? `<button type="button" class="booking-outline" ${room.status === 'OUT_OF_SERVICE' ? `data-api-reopen-room="${room.id}"` : `data-api-close-room="${room.id}"`}>${room.status === 'OUT_OF_SERVICE' ? 'เปิดห้องอีกครั้ง' : 'ปิดห้องเพื่อซ่อม'}</button>` : ''}
-      </div>`).join('');
-    await renderDamageReportsApi($('#executive-damage-list'));
+      </div>`).join('') || '<p>ไม่พบห้องในประเภทที่เลือก</p>';
   } catch (error) { repairRoomList.innerHTML = `<p>${escapeHtml(error.message)}</p>`; }
 }
+
+repairRoomTypeFilter?.addEventListener('change', renderRepairRoomsApi);
 
 repairRoomList.addEventListener('click', async event => {
   const closeButton = event.target.closest('[data-api-close-room]');
@@ -2193,6 +2701,7 @@ repairRoomList.addEventListener('click', async event => {
   } catch (error) { toast(error.message); }
 });
 
+// โหลดรีวิวที่เผยแพร่บนหน้าเว็บจาก Review API
 async function loadPublicReviews() {
   const target = $('#public-review-list');
   if (!target) return;
@@ -2245,6 +2754,7 @@ $('#superadmin-review-list')?.addEventListener('click', async event => {
   }
 });
 
+// โหลดแชตลูกค้า; API/SQL อยู่ api/modules/chat (ChatMessage)
 async function loadCustomerChat() {
   if (!customerEmail) return;
   const box = $('#chat-messages');
@@ -2338,6 +2848,7 @@ document.addEventListener('click', async event => {
   }
 });
 
+// โหลดรายชื่อพนักงานและสิทธิ์; API/SQL อยู่ api/modules/employees (Employee)
 async function renderStaffAccessApi() {
   staffAccessList.innerHTML = '<tr><td colspan="4">กำลังโหลดพนักงาน...</td></tr>';
   try {
@@ -2345,16 +2856,33 @@ async function renderStaffAccessApi() {
     staffAccessList.innerHTML = data.map(employee => `<tr>
       <td>${escapeHtml(employee.name)}<small>${escapeHtml(employee.email)}</small></td>
       <td>${escapeHtml(employee.department)}</td><td>${escapeHtml(employee.role)}</td>
-      <td><button class="link-edit" data-api-employee="${employee.id}" data-employee-record="${escapeHtml(encodeURIComponent(JSON.stringify(employee)))}">แก้ไขสิทธิ์</button></td>
+      <td>${currentStaffSession.role === 'superadmin' && employee.role === 'management'
+        ? '<span class="muted-action">จัดการโดยฝ่ายบริหาร</span>'
+        : `<button class="link-edit" data-api-employee="${employee.id}" data-employee-record="${escapeHtml(encodeURIComponent(JSON.stringify(employee)))}">แก้ไขสิทธิ์</button>`}</td>
     </tr>`).join('');
   } catch (error) { staffAccessList.innerHTML = `<tr><td colspan="4">${escapeHtml(error.message)}</td></tr>`; }
 }
+
+$('#add-staff')?.addEventListener('click', () => {
+  staffAccountForm.reset();
+  delete staffAccountForm.dataset.employeeId;
+  $('#staff-account-title').textContent = 'เพิ่มพนักงาน';
+  $('#staff-account-error').hidden = true;
+  const { email, password } = staffAccountForm.elements;
+  email.readOnly = false;
+  password.disabled = false;
+  password.required = true;
+  $('#staff-temp-password').hidden = false;
+  $('#staff-account-dialog').showModal();
+});
 
 staffAccessList.addEventListener('click', event => {
   const button = event.target.closest('[data-api-employee]'); if (!button) return;
   const employee = JSON.parse(decodeURIComponent(button.dataset.employeeRecord));
   staffAccountForm.reset(); editingStaffEmail = employee.email;
   staffAccountForm.dataset.employeeId = employee.id;
+  $('#staff-account-title').textContent = 'แก้ไขบัญชีพนักงาน';
+  $('#staff-account-error').hidden = true;
   const { name, email, department, role, password } = staffAccountForm.elements;
   name.value = employee.name; email.value = employee.email; department.value = employee.department; role.value = employee.role;
   email.readOnly = false; password.required = false; password.disabled = true; $('#staff-temp-password').hidden = true;
@@ -2372,6 +2900,7 @@ staffAccountForm.addEventListener('submit', async event => {
   } catch (error) { $('#staff-account-error').textContent = error.message; $('#staff-account-error').hidden = false; }
 }, { capture: true });
 
+// แสดงประวัติการเปลี่ยนแปลง; ข้อมูลอ่านจาก AuditLog ผ่าน api/modules/audit
 async function renderAuditApi() {
   const target = $('#executive-audit-list');
   try {
@@ -2380,9 +2909,13 @@ async function renderAuditApi() {
   } catch (error) { target.innerHTML = `<p>${escapeHtml(error.message)}</p>`; }
 }
 
+// จุดรวมการโหลดข้อมูล dashboard ตาม role; เพิ่มการเรียกโหลดของแผนกที่นี่
 function refreshStaffDashboard(role) {
   if (role === 'superadmin') {
+    renderDashboardSummary();
     renderStaffAccessApi();
+    renderSuperadminRoomsApi();
+    renderSuperadminAttractions();
     renderStaffBookingHistory(role);
     renderReceptionChatsApi();
     renderReviewModeration();
@@ -2391,8 +2924,11 @@ function refreshStaffDashboard(role) {
     renderAccountingPayments();
     renderFinancialSummary('accounting-financial-summary');
     renderRefunds('accounting-refund-list', role);
+    renderStaffBookingHistory(role);
   }
   if (role === 'executive') {
+    renderDashboardSummary();
+    renderExecutivePayments();
     renderRepairRoomsApi();
     renderFinancialSummary('executive-financial-summary');
     renderStaffBookingHistory(role);
@@ -2401,11 +2937,13 @@ function refreshStaffDashboard(role) {
     renderAuditApi();
   }
   if (role === 'reception') {
+    renderDashboardSummary();
     renderReceptionRoomsApi();
     renderStaffBookingHistory(role);
     renderDamageReportsApi($('#reception-damage-list'));
     renderCleaningSummaryApi();
     renderReceptionChatsApi();
+    renderReceptionActivities();
   }
   if (role === 'housekeeping') {
     renderCleaningQueueApi();

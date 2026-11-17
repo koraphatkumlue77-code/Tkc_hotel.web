@@ -32,6 +32,11 @@ export class BookingsService {
     return this.repository.cancelMine(bookingId, principal.id, reason);
   }
 
+  async cancelUnpaidAsStaff(bookingIdValue, principal) {
+    const bookingId = routeInteger(bookingIdValue, "bookingId", 1, Number.MAX_SAFE_INTEGER);
+    return this.repository.cancelUnpaidAsStaff(bookingId, principal.id);
+  }
+
   async declareLateArrival(bookingIdValue, body, principal) {
     const bookingId = routeInteger(bookingIdValue, "bookingId", 1, Number.MAX_SAFE_INTEGER);
     const value = requireObject(body);

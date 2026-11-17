@@ -1,3 +1,4 @@
+// HTTP endpoints สำหรับแม่บ้าน รายงานความเสียหาย และปิด/เปิดห้องโดยฝ่ายบริหาร
 import { Router } from "express";
 import { requireRoles } from "../auth/session.js";
 import { RoomOperationsRepository } from "./repository.js";

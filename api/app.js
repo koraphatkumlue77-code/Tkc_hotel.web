@@ -16,6 +16,7 @@ import { createReviewsModule } from "./modules/reviews/routes.js";
 import { createChatModule } from "./modules/chat/routes.js";
 import { createEmployeesModule } from "./modules/employees/routes.js";
 import { createAuditModule } from "./modules/audit/routes.js";
+import { createDashboardModule } from "./modules/dashboard/routes.js";
 
 export function createApp({ checkDatabase, publicRoot, pool, authConfig, storageRoot }) {
   if (typeof checkDatabase !== "function") {
@@ -51,6 +52,7 @@ export function createApp({ checkDatabase, publicRoot, pool, authConfig, storage
   });
 
   if (pool && authConfig) {
+    // จุดรวมการ mount API modules; เมื่อสร้างกลุ่ม API ใหม่ให้ลงทะเบียน router ที่นี่
     const auth = createAuthModule({ pool, authConfig });
     app.use("/api/auth", auth.router);
     app.locals.authenticate = auth.authenticate;
@@ -65,6 +67,7 @@ export function createApp({ checkDatabase, publicRoot, pool, authConfig, storage
     app.use("/api", createChatModule({ pool, authenticate: auth.authenticate }).router);
     app.use("/api", createEmployeesModule({ pool, authenticate: auth.authenticate }).router);
     app.use("/api", createAuditModule({ pool, authenticate: auth.authenticate }).router);
+    app.use("/api", createDashboardModule({ pool, authenticate: auth.authenticate }).router);
     if (storageRoot) {
       app.use("/api", createPaymentsModule({
         pool,

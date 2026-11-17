@@ -1,3 +1,4 @@
+// HTTP endpoints สำหรับสมัคร/เข้าสู่ระบบ/โปรไฟล์; SQL บัญชีอยู่ใน repository.js
 import { Router } from "express";
 
 import { AuthRepository } from "./repository.js";

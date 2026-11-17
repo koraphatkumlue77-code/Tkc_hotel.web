@@ -1,3 +1,4 @@
+// SQL สำหรับ RoomAssignment และการเปลี่ยนสถานะ Booking/Room ระหว่างเข้าพัก
 import { ApiError } from "../../middleware/errors.js";
 import { writeAudit } from "../auth/repository.js";
 import { centsToDecimal, decimalToCents } from "../bookings/money.js";

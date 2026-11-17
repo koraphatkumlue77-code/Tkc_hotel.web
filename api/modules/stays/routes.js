@@ -1,3 +1,4 @@
+// HTTP endpoints สำหรับจัดห้อง Check-in/Check-out และย้ายห้องฉุกเฉิน
 import { Router } from "express";
 
 import { requireRoles } from "../auth/session.js";

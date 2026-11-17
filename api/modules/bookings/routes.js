@@ -1,3 +1,4 @@
+// HTTP endpoints สำหรับสร้าง/อ่าน/ยกเลิกการจองและรายละเอียด; กติกา/SQL อยู่ service.js และ repository.js
 import { Router } from "express";
 
 import { requireRoles } from "../auth/session.js";
@@ -89,6 +90,15 @@ export function createBookingsModule({ pool, authenticate }) {
     requireRoles("reception", "accounting", "superadmin", "management"),
     asyncHandler(async (request, response) => {
       response.json({ data: await service.getStaff(request.params.bookingId) });
+    })
+  );
+
+  router.post(
+    "/staff/bookings/:bookingId/cancel-unpaid",
+    authenticate,
+    requireRoles("reception", "accounting", "superadmin", "management"),
+    asyncHandler(async (request, response) => {
+      response.json({ data: await service.cancelUnpaidAsStaff(request.params.bookingId, request.principal) });
     })
   );
 

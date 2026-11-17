@@ -1,3 +1,5 @@
+// SQL สำหรับ Booking และข้อมูลลูก เช่น BookingRoom, BookingPromotion, BookingService และ ServiceUsage
+// การคิดยอดจริงและการสร้างข้อมูล snapshot ตอนจองอยู่ใน transaction ของไฟล์นี้
 import crypto from "node:crypto";
 
 import { ApiError } from "../../middleware/errors.js";
@@ -215,10 +217,15 @@ export class BookingsRepository {
   async getStaff(bookingId) {
     const [rows] = await this.pool.execute(`
       SELECT b.booking_id AS id, b.booking_code AS bookingCode, b.status,
+             (b.status = 'PENDING_PAYMENT' AND NOT EXISTS (
+               SELECT 1 FROM Payment p WHERE p.booking_id = b.booking_id
+             )) AS canStaffCancelUnpaid,
              b.channel, DATE_FORMAT(b.check_in_date, '%Y-%m-%d') AS checkIn,
              DATE_FORMAT(b.check_out_date, '%Y-%m-%d') AS checkOut,
              b.hold_expires_at AS holdExpiresAt,
+             CAST(b.room_subtotal_snapshot AS CHAR) AS roomSubtotal,
              CAST(b.service_subtotal_snapshot AS CHAR) AS serviceSubtotal,
+             CAST(b.discount_total_snapshot AS CHAR) AS discountTotal,
              CAST(b.total_snapshot AS CHAR) AS total,
              c.customer_id AS customerId, c.full_name AS customerName,
              c.email AS customerEmail, c.phone AS customerPhone,
@@ -228,11 +235,12 @@ export class BookingsRepository {
     `, [bookingId]);
     const booking = rows[0];
     if (!booking) throw new ApiError(404, "BOOKING_NOT_FOUND", "Booking was not found");
-    const [rooms, services, tours] = await Promise.all([
+    const [rooms, services, tours, payments, timeline] = await Promise.all([
       this.pool.execute(`
         SELECT br.booking_room_id AS id, br.room_type_id AS roomTypeId,
                rt.type_name AS roomTypeName, br.guest_count AS guestCount,
                CAST(br.nightly_rate_snapshot AS CHAR) AS nightlyRate,
+               CAST(br.net_amount AS CHAR) AS netAmount,
                ra.room_id AS assignedRoomId, r.room_code AS assignedRoomCode
         FROM BookingRoom br
         JOIN RoomType rt ON rt.room_type_id = br.room_type_id
@@ -280,8 +288,41 @@ export class BookingsRepository {
         ORDER BY round_data.tour_date, round_data.start_time, tr.tour_round_id
       `, [bookingId]).then(([records]) => records.map((record) => ({
         ...record, quantity: Number(record.quantity)
-      })))
+      }))),
+      this.pool.execute(`
+        SELECT payment_id AS id, transaction_type AS transactionType,
+               direction, method, CAST(amount AS CHAR) AS amount, status,
+               submitted_at AS submittedAt, verified_at AS verifiedAt
+        FROM Payment
+        WHERE booking_id = ?
+        ORDER BY COALESCE(submitted_at, requested_at, created_at), payment_id
+      `, [bookingId]).then(([records]) => records.map((record) => ({
+        ...record, id: Number(record.id)
+      }))),
+      this.pool.execute(`
+        SELECT log.action, log.reason,
+               COALESCE(
+                 JSON_UNQUOTE(JSON_EXTRACT(log.after_data, '$.status')),
+                 JSON_UNQUOTE(JSON_EXTRACT(log.after_data, '$.booking.status'))
+               ) AS status,
+               log.actor_type AS actorType,
+               COALESCE(customer.full_name, employee.name,
+                 CASE log.actor_type WHEN 'CUSTOMER' THEN 'ลูกค้า'
+                      WHEN 'EMPLOYEE' THEN 'พนักงาน' ELSE 'ระบบ' END) AS actorName,
+               DATE_FORMAT(log.created_at, '%Y-%m-%d %H:%i') AS createdAt
+        FROM AuditLog log
+        LEFT JOIN Customer customer ON customer.customer_id = log.actor_customer_id
+        LEFT JOIN Employee employee ON employee.employee_id = log.actor_employee_id
+        WHERE log.entity_type = 'Booking' AND log.entity_id = ?
+        ORDER BY log.created_at, log.audit_log_id
+      `, [bookingId]).then(([records]) => records)
     ]);
+    const paidCents = payments.reduce((sum, payment) => {
+      if (!['VERIFIED', 'COMPLETED', 'APPROVED'].includes(payment.status)) return sum;
+      const amount = decimalToCents(payment.amount);
+      return sum + (payment.direction === 'OUT' ? -amount : payment.direction === 'IN' ? amount : 0);
+    }, 0);
+    const totalCents = decimalToCents(booking.total);
     return {
       id: Number(booking.id),
       bookingCode: booking.bookingCode,
@@ -290,8 +331,14 @@ export class BookingsRepository {
       checkIn: booking.checkIn,
       checkOut: booking.checkOut,
       holdExpiresAt: booking.holdExpiresAt,
+      roomSubtotal: booking.roomSubtotal,
       serviceSubtotal: booking.serviceSubtotal,
+      discountTotal: booking.discountTotal,
       total: booking.total,
+      payment: {
+        paid: centsToDecimal(paidCents),
+        outstanding: centsToDecimal(Math.max(0, totalCents - paidCents))
+      },
       customer: {
         id: Number(booking.customerId),
         fullName: booking.customerName,
@@ -301,7 +348,9 @@ export class BookingsRepository {
       },
       rooms,
       services,
-      tours
+      tours,
+      payments,
+      timeline
     };
   }
 
@@ -317,6 +366,10 @@ export class BookingsRepository {
              DATE_FORMAT(b.check_out_date, '%Y-%m-%d') AS checkOut,
              b.hold_expires_at AS holdExpiresAt,
              CAST(b.deposit_rate AS CHAR) AS depositRate,
+             CAST(b.discount_total_snapshot AS CHAR) AS discountTotal,
+             (SELECT GROUP_CONCAT(p.code ORDER BY bp.sequence_no SEPARATOR ', ')
+              FROM BookingPromotion bp JOIN Promotion p ON p.promotion_id = bp.promotion_id
+              WHERE bp.booking_id = b.booking_id) AS promotionCodes,
              CAST(b.total_snapshot AS CHAR) AS total,
              b.created_at AS createdAt, b.updated_at AS updatedAt,
              CASE
@@ -367,20 +420,21 @@ export class BookingsRepository {
         WHERE br.booking_id = ? ORDER BY br.booking_room_id
       `, [bookingId]).then(([rows]) => rows),
       this.pool.execute(`
-        SELECT tr.tour_round_id AS roundId, s.name,
+        SELECT tr.tour_reservation_id AS id, tr.participant_name AS participantName,
+               tr.tour_round_id AS roundId, s.name,
                JSON_UNQUOTE(JSON_EXTRACT(s.schedule_json, '$.location')) AS location,
                DATE_FORMAT(round_data.tour_date, '%Y-%m-%d') AS tourDate,
                TIME_FORMAT(round_data.start_time, '%H:%i:%s') AS startTime,
-               tr.status, COUNT(*) AS quantity,
-               CAST(SUM(tr.unit_price_snapshot) AS CHAR) AS amount
+               tr.status, 1 AS quantity,
+               CAST(tr.unit_price_snapshot AS CHAR) AS amount
         FROM TourReservation tr
         JOIN TourRound round_data ON round_data.tour_round_id = tr.tour_round_id
         JOIN Service s ON s.service_id = round_data.service_id
         WHERE tr.booking_id = ? AND tr.status <> 'CANCELLED'
-        GROUP BY tr.tour_round_id, s.name, location, round_data.tour_date,
-                 round_data.start_time, tr.status
-        ORDER BY round_data.tour_date, round_data.start_time, tr.tour_round_id
-      `, [bookingId]).then(([rows]) => rows.map((row) => ({ ...row, roundId: Number(row.roundId), quantity: Number(row.quantity) }))),
+        ORDER BY round_data.tour_date, round_data.start_time, tr.tour_reservation_id
+      `, [bookingId]).then(([rows]) => rows.map((row) => ({
+        ...row, id: Number(row.id), roundId: Number(row.roundId), quantity: Number(row.quantity)
+      }))),
       this.pool.execute(`
         SELECT bs.booking_service_id AS id, bs.service_id AS serviceId,
                s.name, s.service_kind AS serviceKind, bs.status,
@@ -502,6 +556,49 @@ export class BookingsRepository {
       });
       return after;
     });
+  }
+
+  async cancelUnpaidAsStaff(bookingId, employeeId) {
+    const connection = await this.pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [bookingRows] = await connection.execute(`
+        SELECT booking_id AS id, booking_code AS bookingCode, status
+        FROM Booking WHERE booking_id = ? FOR UPDATE
+      `, [bookingId]);
+      const booking = bookingRows[0];
+      if (!booking) throw new ApiError(404, "BOOKING_NOT_FOUND", "Booking was not found");
+      if (booking.status !== "PENDING_PAYMENT") {
+        throw new ApiError(409, "BOOKING_NOT_WAITING_FOR_PAYMENT", "Only unpaid bookings can be cancelled by staff");
+      }
+      const [payments] = await connection.execute(
+        "SELECT payment_id FROM Payment WHERE booking_id = ? LIMIT 1 FOR UPDATE",
+        [bookingId]
+      );
+      if (payments.length) {
+        throw new ApiError(409, "BOOKING_HAS_PAYMENT", "This booking has payment history and cannot use unpaid cancellation");
+      }
+      await connection.execute(`
+        UPDATE Booking SET status = 'CANCELLED', status_changed_at = CURRENT_TIMESTAMP
+        WHERE booking_id = ?
+      `, [bookingId]);
+      const after = { id: Number(booking.id), bookingCode: booking.bookingCode, status: "CANCELLED" };
+      await writeAudit(connection, {
+        entityType: "Booking", entityId: bookingId,
+        action: "STAFF_BOOKING_CANCELLED_UNPAID",
+        actor: { type: "employee", id: employeeId },
+        before: { bookingCode: booking.bookingCode, status: booking.status },
+        after,
+        reason: "พนักงานยกเลิกการจองก่อนลูกค้าส่งหลักฐานชำระเงิน"
+      });
+      await connection.commit();
+      return after;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   }
 
   async declareLateArrival(bookingId, customerId, expectedArrivalAt) {

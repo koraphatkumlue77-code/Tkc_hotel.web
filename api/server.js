@@ -1,3 +1,4 @@
+// จุดเริ่ม server: โหลด .env, สร้าง MySQL pool, ลงทะเบียน app และเสิร์ฟหน้าเว็บ/API
 import "dotenv/config";
 
 import { createApp } from "./app.js";

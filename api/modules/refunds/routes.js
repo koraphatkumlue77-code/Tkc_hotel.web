@@ -1,3 +1,4 @@
+// HTTP endpoints สำหรับขอคืนเงิน (บัญชี), อนุมัติ (บริหาร) และบันทึกจ่ายคืน
 import { Router } from "express";
 import { requireRoles } from "../auth/session.js";
 import { RefundsRepository } from "./repository.js";

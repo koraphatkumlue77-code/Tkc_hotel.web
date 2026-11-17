@@ -1,3 +1,4 @@
+// SQL คืนเงินใช้ Payment ประเภท REFUND_REQUEST/REFUND_PAYOUT ไม่ได้แยกตาราง Refund
 import { ApiError } from "../../middleware/errors.js";
 import { writeAudit } from "../auth/repository.js";
 import { centsToDecimal, decimalToCents } from "../bookings/money.js";

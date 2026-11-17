@@ -1,3 +1,4 @@
+// SQL สำหรับงานแม่บ้าน ความเสียหาย และปิดห้อง โดยเก็บเหตุการณ์ต่อเนื่องใน RoomEvent
 import { ApiError } from "../../middleware/errors.js";
 import { writeAudit } from "../auth/repository.js";
 

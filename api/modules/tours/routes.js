@@ -1,3 +1,4 @@
+// HTTP endpoints สำหรับรอบทัวร์และผู้ร่วมทัวร์ รวมการยกเลิกโดยลูกค้า
 import { Router } from "express";
 import { requireRoles } from "../auth/session.js";
 import { ToursRepository } from "./repository.js";

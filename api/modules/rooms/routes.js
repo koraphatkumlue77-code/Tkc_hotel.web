@@ -1,3 +1,4 @@
+// HTTP endpoints สำหรับประเภทห้อง ทะเบียนห้อง และค้นหาห้องว่าง
 import { Router } from "express";
 
 import { RoomsRepository } from "./repository.js";

@@ -1,3 +1,4 @@
+// SQL สำหรับข้อความ ChatMessage รวมการอ่าน ส่ง และลบข้อความแบบเก็บประวัติ
 import { ApiError } from "../../middleware/errors.js";
 import { writeAudit } from "../auth/repository.js";
 

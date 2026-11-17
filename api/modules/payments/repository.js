@@ -1,3 +1,4 @@
+// SQL สำหรับ Payment, ตรวจหลักฐาน, รับชำระ และสรุปยอดที่เกี่ยวกับ Booking
 import { ApiError } from "../../middleware/errors.js";
 import { writeAudit } from "../auth/repository.js";
 import { centsToDecimal, decimalToCents, percentageOfCents } from "../bookings/money.js";

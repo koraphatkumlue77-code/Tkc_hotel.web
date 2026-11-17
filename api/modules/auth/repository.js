@@ -1,3 +1,4 @@
+// SQL สำหรับบัญชี Customer/Employee, login, profile, password และการเขียน AuditLog
 export class AuthRepository {
   constructor(pool) {
     this.pool = pool;

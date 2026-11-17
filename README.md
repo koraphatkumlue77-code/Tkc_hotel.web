@@ -18,6 +18,37 @@ Tkc_hotel.web/
     └── test/
 ```
 
+## คู่มือหาโค้ด: แก้หน้าจอ กติกา API และข้อมูล MySQL ตรงไหน
+
+เวลาตามงานหนึ่งฟังก์ชัน ให้ไล่จากซ้ายไปขวา: **หน้าตา** แก้ `index.html`/`style.css` →
+**พฤติกรรมในเบราว์เซอร์** แก้ `script.js` → **เส้นทาง HTTP** ดู `api/modules/<ชื่อโมดูล>/routes.js` →
+**กติกาธุรกิจ/ตรวจข้อมูล** ดู `service.js` และ `contracts.js` → **คำสั่ง SQL** แก้ `repository.js` →
+**โครงสร้างคอลัมน์และความสัมพันธ์** ดู `database/schema.sql` (การเปลี่ยน schema ต้องทำผ่าน migration)
+อย่าแก้ยอดเงินหรือสถานะจริงจาก JavaScript ฝั่งหน้าเว็บ; ให้แก้กติกาใน API แล้วให้หน้าเว็บแสดงผลจาก API
+
+| ฟังก์ชันที่ต้องการแก้ | หน้าเว็บ (`script.js`) | API / กติกา / SQL | ตารางหลัก |
+|---|---|---|---|
+| เข้าสู่ระบบ สมัครสมาชิก โปรไฟล์ และ session | `apiFetch`, `startCustomerSession`, `restoreSession`, `signOutCustomer` | `api/modules/auth/{routes,service,repository}.js` | `Customer`, `Employee`, `AuditLog` |
+| ค้นหาห้องและข้อมูลประเภทห้อง | `loadRoomCatalog`, `renderRooms`, `renderCatalogConsumers` | `api/modules/rooms/{routes,service,repository}.js` | `RoomType`, `Room`, `RoomEvent`, `BookingRoom` |
+| จองห้อง คำนวณยอดบนหน้าจอ และดูรายการจอง | `bookingAmounts`, `updateBookingTotal`, submit handler ของ `#booking-form`, `renderMyBookings`, `openMyBookings` | `api/modules/bookings/{routes,service,contracts,repository}.js` | `Booking`, `BookingRoom`, `BookingPromotion`, `BookingService`, `ServiceUsage`, `Payment` |
+| จัดห้อง Check-in / No-show / Check-out และยกเลิกจองที่ไม่เคยส่งสลิป | `renderStaffBookingHistory`, handler ของปุ่มในรายละเอียดการจอง, `previewReceptionSettlement` | `api/modules/stays/{routes,service,repository}.js`, `api/modules/bookings/{routes,service,repository}.js` และ `api/modules/payments/` | `Booking`, `BookingRoom`, `RoomAssignment`, `Room`, `Payment`, `RoomEvent`, `AuditLog` |
+| รับชำระ ตรวจหลักฐาน และสรุปบัญชี | `renderAccountingPayments`, `savePaymentReview`, `renderFinancialSummary` | `api/modules/payments/{routes,service,repository}.js` | `Payment`, `Booking`, `RoomAssignment`, `RoomEvent` |
+| บริการเสริมและการยกเลิกรายการบริการ | `facilityBookingOptions`, form/event handlers ในส่วน Facilities, `renderMyBookings`, handler `[data-cancel-booking-service]` | `api/modules/services/{routes,service,repository}.js` | `Service`, `BookingService`, `ServiceUsage`, `Booking`, `Payment` |
+| รอบทัวร์ จอง/ยกเลิกผู้ร่วมทัวร์ | `loadFacilityAvailability`, form/event handlers ในส่วน Facilities, `renderMyBookings`, handler `[data-cancel-tour]` | `api/modules/tours/{routes,service,repository}.js` | `TourRound`, `TourReservation`, `Service`, `Booking` |
+| สร้าง/แก้ไขโปรโมชันและสถานที่ท่องเที่ยว | `renderPromotions`, handler `#create-promotion`, handler `[data-edit-promotion]`, `renderSuperadminAttractions` | `api/modules/promotions/{routes,service,contracts,repository}.js`; API ให้ Management จัดโปรโมชันและ Superadmin จัดสถานที่ท่องเที่ยว | `Promotion`, `BookingPromotion`, `Service` |
+| งานแม่บ้าน รายงานความเสียหาย และปิดห้อง | `renderCleaningQueueApi`, `openApiDamage`, `renderDamageReportsApi`, `renderRepairRoomsApi` | `api/modules/room-operations/{routes,service,repository}.js` | `Room`, `RoomEvent`, `Employee` |
+| รีวิวและการซ่อนรีวิว | `loadPublicReviews`, `renderReviewModeration`, handlers ของฟอร์มรีวิว | `api/modules/reviews/{routes,service,repository}.js` | `Review`, `Booking`, `Customer`, `AuditLog` |
+| แชตลูกค้า/พนักงานและลบข้อความ | `loadCustomerChat`, `renderReceptionChatsApi`, `loadReceptionThread` และ chat event handlers | `api/modules/chat/{routes,service,repository}.js` | `ChatMessage`, `Customer`, `Employee` |
+| เพิ่ม/แก้บัญชีพนักงานและกำหนดสิทธิ์ | `renderStaffAccessApi`, handler ของ `staffAccountForm` | `api/modules/employees/{routes,service,repository}.js`; Superadmin แก้บัญชี Management ไม่ได้ | `Employee`, `AuditLog` |
+| ขอคืนเงิน อนุมัติ และบันทึกจ่ายคืน | `renderRefunds` และ handlers `data-refund-*` | `api/modules/refunds/{routes,service,repository}.js` | `Payment`, `Booking`, `AuditLog` |
+| Dashboard และตัวเลขสรุป | `refreshStaffDashboard` และ renderers ของแต่ละ role | `api/modules/dashboard/{routes,repository}.js` | `Room`, `Booking`, `BookingRoom`, `ServiceUsage`, `TourReservation`, `Payment` |
+| ประวัติว่าใครแก้ข้อมูลอะไร | `renderAuditApi` | `api/modules/audit/{routes,repository}.js`; การเขียน Audit เรียกจาก repository ของแต่ละโมดูล | `AuditLog` |
+
+**ตำแหน่งสำคัญ:** `api/app.js` ลงทะเบียน route modules, `api/db.js` สร้าง MySQL pool,
+`api/server.js` เริ่ม Express, `database/schema.sql` อธิบายตารางทั้งหมด และ `script.js` เรียก API กลางผ่าน `apiFetch`.
+ถ้าหน้าจอแสดงค่าไม่ตรง ให้ตรวจตามลำดับจาก Network/API response ไปที่ route, service และ SQL repository;
+แก้เฉพาะชั้นที่เป็นต้นเหตุเพื่อไม่ให้ข้อมูลหน้าเว็บกับฐานข้อมูลคลาดกัน
+
 ## สิ่งที่ต้องติดตั้ง
 
 - Node.js 20 ขึ้นไป

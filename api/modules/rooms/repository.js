@@ -1,3 +1,4 @@
+// SQL สำหรับ RoomType/Room, การค้นหาห้องว่าง, เพิ่มประเภทห้อง และทะเบียนห้อง
 import { ApiError } from "../../middleware/errors.js";
 import { writeAudit } from "../auth/repository.js";
 import { isRoomTransitionAllowed } from "./policy.js";
