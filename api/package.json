@@ -1,0 +1,23 @@
+{
+  "name": "tkc-hotel-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test test/*.test.js",
+    "test:db": "node --test --test-concurrency=1 integration/*.test.js",
+    "db:backup": "node scripts/backup-database.js",
+    "db:preflight": "node scripts/preflight-plan-b.js",
+    "db:test:reset": "node scripts/reset-test-db.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^18.0.10",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.5.0",
+    "mysql2": "^3.24.6"
+  }
+}

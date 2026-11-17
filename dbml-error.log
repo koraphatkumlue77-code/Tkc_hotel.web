@@ -1,0 +1,402 @@
+2026-11-16T10:57:29.608Z
+
+    tkc_hotel.dbml(80,5): Expect a following space
+    tkc_hotel.dbml(80,10): Expect a following space
+    tkc_hotel.dbml(80,20): Expect a following space
+    tkc_hotel.dbml(80,48): Expect a following space
+    tkc_hotel.dbml(80,65): Expect a following space
+    tkc_hotel.dbml(80,82): Expect a following space
+    tkc_hotel.dbml(80,99): Expect a following space
+    tkc_hotel.dbml(80,117): Expect a following space
+    tkc_hotel.dbml(80,127): Expect a following space
+    tkc_hotel.dbml(80,157): Expect a following space
+    tkc_hotel.dbml(80,174): Expect a following space
+    tkc_hotel.dbml(80,195): Expect a following space
+    tkc_hotel.dbml(80,212): Expect a following space
+    tkc_hotel.dbml(80,230): Expect a following space
+    tkc_hotel.dbml(80,240): Expect a following space
+    tkc_hotel.dbml(80,270): Expect a following space
+    tkc_hotel.dbml(80,287): Expect a following space
+    tkc_hotel.dbml(80,304): Expect a following space
+    tkc_hotel.dbml(116,5): Expect a following space
+    tkc_hotel.dbml(116,8): Expect a following space
+    tkc_hotel.dbml(116,22): Expect a following space
+    tkc_hotel.dbml(116,27): Expect a following space
+    tkc_hotel.dbml(117,5): Expect a following space
+    tkc_hotel.dbml(117,9): Expect a following space
+    tkc_hotel.dbml(117,23): Expect a following space
+    tkc_hotel.dbml(117,39): Expect a following space
+    tkc_hotel.dbml(117,61): Expect a following space
+    tkc_hotel.dbml(117,78): Expect a following space
+    tkc_hotel.dbml(117,103): Expect a following space
+    tkc_hotel.dbml(117,120): Expect a following space
+    tkc_hotel.dbml(117,143): Expect a following space
+    tkc_hotel.dbml(117,161): Expect a following space
+    tkc_hotel.dbml(117,183): Expect a following space
+    tkc_hotel.dbml(117,204): Expect a following space
+    tkc_hotel.dbml(117,229): Expect a following space
+    tkc_hotel.dbml(117,250): Expect a following space
+    tkc_hotel.dbml(117,273): Expect a following space
+    tkc_hotel.dbml(117,294): Expect a following space
+    tkc_hotel.dbml(117,316): Expect a following space
+    tkc_hotel.dbml(117,330): Expect a following space
+    tkc_hotel.dbml(117,355): Expect a following space
+    tkc_hotel.dbml(117,369): Expect a following space
+    tkc_hotel.dbml(142,5): Expect a following space
+    tkc_hotel.dbml(142,9): Expect a following space
+    tkc_hotel.dbml(142,27): Expect a following space
+    tkc_hotel.dbml(142,41): Expect a following space
+    tkc_hotel.dbml(142,56): Expect a following space
+    tkc_hotel.dbml(142,70): Expect a following space
+    tkc_hotel.dbml(142,87): Expect a following space
+    tkc_hotel.dbml(142,101): Expect a following space
+    tkc_hotel.dbml(142,118): Expect a following space
+    tkc_hotel.dbml(142,124): Expect a following space
+    tkc_hotel.dbml(142,142): Expect a following space
+    tkc_hotel.dbml(142,147): Expect a following space
+    tkc_hotel.dbml(143,5): Expect a following space
+    tkc_hotel.dbml(143,9): Expect a following space
+    tkc_hotel.dbml(143,25): Expect a following space
+    tkc_hotel.dbml(143,38): Expect a following space
+    tkc_hotel.dbml(144,5): Expect a following space
+    tkc_hotel.dbml(144,8): Expect a following space
+    tkc_hotel.dbml(163,5): Expect a following space
+    tkc_hotel.dbml(163,9): Expect a following space
+    tkc_hotel.dbml(163,20): Expect a following space
+    tkc_hotel.dbml(163,33): Expect a following space
+    tkc_hotel.dbml(163,54): Expect a following space
+    tkc_hotel.dbml(163,68): Expect a following space
+    tkc_hotel.dbml(197,5): Expect a following space
+    tkc_hotel.dbml(197,10): Expect a following space
+    tkc_hotel.dbml(197,21): Expect a following space
+    tkc_hotel.dbml(197,51): Expect a following space
+    tkc_hotel.dbml(197,69): Expect a following space
+    tkc_hotel.dbml(197,87): Expect a following space
+    tkc_hotel.dbml(197,98): Expect a following space
+    tkc_hotel.dbml(197,128): Expect a following space
+    tkc_hotel.dbml(223,5): Expect a following space
+    tkc_hotel.dbml(223,9): Expect a following space
+    tkc_hotel.dbml(223,22): Expect a following space
+    tkc_hotel.dbml(223,51): Expect a following space
+    tkc_hotel.dbml(223,56): Expect a following space
+    tkc_hotel.dbml(223,77): Expect a following space
+    tkc_hotel.dbml(271,5): Expect a following space
+    tkc_hotel.dbml(271,8): Expect a following space
+    tkc_hotel.dbml(272,5): Expect a following space
+    tkc_hotel.dbml(272,10): Expect a following space
+    tkc_hotel.dbml(272,26): Expect a following space
+    tkc_hotel.dbml(272,62): Expect a following space
+    tkc_hotel.dbml(272,71): Expect a following space
+    tkc_hotel.dbml(272,98): Expect a following space
+    tkc_hotel.dbml(272,114): Expect a following space
+    tkc_hotel.dbml(272,149): Expect a following space
+    tkc_hotel.dbml(272,158): Expect a following space
+    tkc_hotel.dbml(272,184): Expect a following space
+    tkc_hotel.dbml(272,200): Expect a following space
+    tkc_hotel.dbml(272,267): Expect a following space
+    tkc_hotel.dbml(273,5): Expect a following space
+    tkc_hotel.dbml(273,9): Expect a following space
+    tkc_hotel.dbml(273,25): Expect a following space
+    tkc_hotel.dbml(273,60): Expect a following space
+    tkc_hotel.dbml(274,5): Expect a following space
+    tkc_hotel.dbml(274,9): Expect a following space
+    tkc_hotel.dbml(274,25): Expect a following space
+    tkc_hotel.dbml(274,91): Expect a following space
+    tkc_hotel.dbml(275,5): Expect a following space
+    tkc_hotel.dbml(275,9): Expect a following space
+    tkc_hotel.dbml(275,25): Expect a following space
+    tkc_hotel.dbml(275,62): Expect a following space
+    tkc_hotel.dbml(275,74): Expect a following space
+    tkc_hotel.dbml(275,95): Expect a following space
+    tkc_hotel.dbml(275,107): Expect a following space
+    tkc_hotel.dbml(275,128): Expect a following space
+    tkc_hotel.dbml(275,142): Expect a following space
+    tkc_hotel.dbml(275,163): Expect a following space
+    tkc_hotel.dbml(303,5): Expect a following space
+    tkc_hotel.dbml(303,9): Expect a following space
+    tkc_hotel.dbml(303,25): Expect a following space
+    tkc_hotel.dbml(303,38): Expect a following space
+    tkc_hotel.dbml(304,5): Expect a following space
+    tkc_hotel.dbml(304,9): Expect a following space
+    tkc_hotel.dbml(304,20): Expect a following space
+    tkc_hotel.dbml(304,36): Expect a following space
+    tkc_hotel.dbml(304,46): Expect a following space
+    tkc_hotel.dbml(304,62): Expect a following space
+    tkc_hotel.dbml(304,73): Expect a following space
+    tkc_hotel.dbml(304,78): Expect a following space
+    tkc_hotel.dbml(325,5): Expect a following space
+    tkc_hotel.dbml(325,9): Expect a following space
+    tkc_hotel.dbml(325,15): Expect a following space
+    tkc_hotel.dbml(325,46): Expect a following space
+    tkc_hotel.dbml(325,55): Expect a following space
+    tkc_hotel.dbml(325,76): Expect a following space
+    tkc_hotel.dbml(326,5): Expect a following space
+    tkc_hotel.dbml(326,8): Expect a following space
+    tkc_hotel.dbml(353,5): Expect a following space
+    tkc_hotel.dbml(353,8): Expect a following space
+    tkc_hotel.dbml(354,5): Expect a following space
+    tkc_hotel.dbml(354,8): Expect a following space
+    tkc_hotel.dbml(403,5): Expect a following space
+    tkc_hotel.dbml(403,9): Expect a following space
+    tkc_hotel.dbml(403,21): Expect a following space
+    tkc_hotel.dbml(403,37): Expect a following space
+    tkc_hotel.dbml(403,51): Expect a following space
+    tkc_hotel.dbml(403,67): Expect a following space
+    tkc_hotel.dbml(403,79): Expect a following space
+    tkc_hotel.dbml(403,84): Expect a following space
+    tkc_hotel.dbml(404,5): Expect a following space
+    tkc_hotel.dbml(404,9): Expect a following space
+    tkc_hotel.dbml(404,21): Expect a following space
+    tkc_hotel.dbml(404,37): Expect a following space
+    tkc_hotel.dbml(404,47): Expect a following space
+    tkc_hotel.dbml(404,63): Expect a following space
+    tkc_hotel.dbml(404,75): Expect a following space
+    tkc_hotel.dbml(404,81): Expect a following space
+    tkc_hotel.dbml(423,5): Expect a following space
+    tkc_hotel.dbml(423,9): Expect a following space
+    tkc_hotel.dbml(423,17): Expect a following space
+    tkc_hotel.dbml(423,30): Expect a following space
+    tkc_hotel.dbml(423,45): Expect a following space
+    tkc_hotel.dbml(423,59): Expect a following space
+    tkc_hotel.dbml(444,5): Expect a following space
+    tkc_hotel.dbml(444,8): Expect a following space
+    tkc_hotel.dbml(462,5): Expect a following space
+    tkc_hotel.dbml(462,9): Expect a following space
+    tkc_hotel.dbml(462,28): Expect a following space
+    tkc_hotel.dbml(462,42): Expect a following space
+    tkc_hotel.dbml(484,5): Expect a following space
+    tkc_hotel.dbml(484,8): Expect a following space
+    tkc_hotel.dbml(485,5): Expect a following space
+    tkc_hotel.dbml(485,8): Expect a following space
+    tkc_hotel.dbml(506,5): Expect a following space
+    tkc_hotel.dbml(506,8): Expect a following space
+    tkc_hotel.dbml(80,5): A check field must be a function expression
+    tkc_hotel.dbml(116,5): A check field must be a function expression
+    tkc_hotel.dbml(117,5): A check field must be a function expression
+    tkc_hotel.dbml(142,5): A check field must be a function expression
+    tkc_hotel.dbml(143,5): A check field must be a function expression
+    tkc_hotel.dbml(144,5): A check field must be a function expression
+    tkc_hotel.dbml(163,5): A check field must be a function expression
+    tkc_hotel.dbml(197,5): A check field must be a function expression
+    tkc_hotel.dbml(223,5): A check field must be a function expression
+    tkc_hotel.dbml(271,5): A check field must be a function expression
+    tkc_hotel.dbml(272,5): A check field must be a function expression
+    tkc_hotel.dbml(273,5): A check field must be a function expression
+    tkc_hotel.dbml(274,5): A check field must be a function expression
+    tkc_hotel.dbml(275,5): A check field must be a function expression
+    tkc_hotel.dbml(303,5): A check field must be a function expression
+    tkc_hotel.dbml(304,5): A check field must be a function expression
+    tkc_hotel.dbml(325,5): A check field must be a function expression
+    tkc_hotel.dbml(326,5): A check field must be a function expression
+    tkc_hotel.dbml(353,5): A check field must be a function expression
+    tkc_hotel.dbml(354,5): A check field must be a function expression
+    tkc_hotel.dbml(403,5): A check field must be a function expression
+    tkc_hotel.dbml(404,5): A check field must be a function expression
+    tkc_hotel.dbml(423,5): A check field must be a function expression
+    tkc_hotel.dbml(444,5): A check field must be a function expression
+    tkc_hotel.dbml(462,5): A check field must be a function expression
+    tkc_hotel.dbml(484,5): A check field must be a function expression
+    tkc_hotel.dbml(485,5): A check field must be a function expression
+    tkc_hotel.dbml(506,5): A check field must be a function expression
+
+2026-11-16T10:57:38.929Z
+
+    tkc_hotel.dbml(80,5): Expect a following space
+    tkc_hotel.dbml(80,10): Expect a following space
+    tkc_hotel.dbml(80,20): Expect a following space
+    tkc_hotel.dbml(80,48): Expect a following space
+    tkc_hotel.dbml(80,65): Expect a following space
+    tkc_hotel.dbml(80,82): Expect a following space
+    tkc_hotel.dbml(80,99): Expect a following space
+    tkc_hotel.dbml(80,117): Expect a following space
+    tkc_hotel.dbml(80,127): Expect a following space
+    tkc_hotel.dbml(80,157): Expect a following space
+    tkc_hotel.dbml(80,174): Expect a following space
+    tkc_hotel.dbml(80,195): Expect a following space
+    tkc_hotel.dbml(80,212): Expect a following space
+    tkc_hotel.dbml(80,230): Expect a following space
+    tkc_hotel.dbml(80,240): Expect a following space
+    tkc_hotel.dbml(80,270): Expect a following space
+    tkc_hotel.dbml(80,287): Expect a following space
+    tkc_hotel.dbml(80,304): Expect a following space
+    tkc_hotel.dbml(116,5): Expect a following space
+    tkc_hotel.dbml(116,8): Expect a following space
+    tkc_hotel.dbml(116,22): Expect a following space
+    tkc_hotel.dbml(116,27): Expect a following space
+    tkc_hotel.dbml(117,5): Expect a following space
+    tkc_hotel.dbml(117,9): Expect a following space
+    tkc_hotel.dbml(117,23): Expect a following space
+    tkc_hotel.dbml(117,39): Expect a following space
+    tkc_hotel.dbml(117,61): Expect a following space
+    tkc_hotel.dbml(117,78): Expect a following space
+    tkc_hotel.dbml(117,103): Expect a following space
+    tkc_hotel.dbml(117,120): Expect a following space
+    tkc_hotel.dbml(117,143): Expect a following space
+    tkc_hotel.dbml(117,161): Expect a following space
+    tkc_hotel.dbml(117,183): Expect a following space
+    tkc_hotel.dbml(117,204): Expect a following space
+    tkc_hotel.dbml(117,229): Expect a following space
+    tkc_hotel.dbml(117,250): Expect a following space
+    tkc_hotel.dbml(117,273): Expect a following space
+    tkc_hotel.dbml(117,294): Expect a following space
+    tkc_hotel.dbml(117,316): Expect a following space
+    tkc_hotel.dbml(117,330): Expect a following space
+    tkc_hotel.dbml(117,355): Expect a following space
+    tkc_hotel.dbml(117,369): Expect a following space
+    tkc_hotel.dbml(142,5): Expect a following space
+    tkc_hotel.dbml(142,9): Expect a following space
+    tkc_hotel.dbml(142,27): Expect a following space
+    tkc_hotel.dbml(142,41): Expect a following space
+    tkc_hotel.dbml(142,56): Expect a following space
+    tkc_hotel.dbml(142,70): Expect a following space
+    tkc_hotel.dbml(142,87): Expect a following space
+    tkc_hotel.dbml(142,101): Expect a following space
+    tkc_hotel.dbml(142,118): Expect a following space
+    tkc_hotel.dbml(142,124): Expect a following space
+    tkc_hotel.dbml(142,142): Expect a following space
+    tkc_hotel.dbml(142,147): Expect a following space
+    tkc_hotel.dbml(143,5): Expect a following space
+    tkc_hotel.dbml(143,9): Expect a following space
+    tkc_hotel.dbml(143,25): Expect a following space
+    tkc_hotel.dbml(143,38): Expect a following space
+    tkc_hotel.dbml(144,5): Expect a following space
+    tkc_hotel.dbml(144,8): Expect a following space
+    tkc_hotel.dbml(163,5): Expect a following space
+    tkc_hotel.dbml(163,9): Expect a following space
+    tkc_hotel.dbml(163,20): Expect a following space
+    tkc_hotel.dbml(163,33): Expect a following space
+    tkc_hotel.dbml(163,54): Expect a following space
+    tkc_hotel.dbml(163,68): Expect a following space
+    tkc_hotel.dbml(197,5): Expect a following space
+    tkc_hotel.dbml(197,10): Expect a following space
+    tkc_hotel.dbml(197,21): Expect a following space
+    tkc_hotel.dbml(197,51): Expect a following space
+    tkc_hotel.dbml(197,69): Expect a following space
+    tkc_hotel.dbml(197,87): Expect a following space
+    tkc_hotel.dbml(197,98): Expect a following space
+    tkc_hotel.dbml(197,128): Expect a following space
+    tkc_hotel.dbml(223,5): Expect a following space
+    tkc_hotel.dbml(223,9): Expect a following space
+    tkc_hotel.dbml(223,22): Expect a following space
+    tkc_hotel.dbml(223,51): Expect a following space
+    tkc_hotel.dbml(223,56): Expect a following space
+    tkc_hotel.dbml(223,77): Expect a following space
+    tkc_hotel.dbml(271,5): Expect a following space
+    tkc_hotel.dbml(271,8): Expect a following space
+    tkc_hotel.dbml(272,5): Expect a following space
+    tkc_hotel.dbml(272,10): Expect a following space
+    tkc_hotel.dbml(272,26): Expect a following space
+    tkc_hotel.dbml(272,62): Expect a following space
+    tkc_hotel.dbml(272,71): Expect a following space
+    tkc_hotel.dbml(272,98): Expect a following space
+    tkc_hotel.dbml(272,114): Expect a following space
+    tkc_hotel.dbml(272,149): Expect a following space
+    tkc_hotel.dbml(272,158): Expect a following space
+    tkc_hotel.dbml(272,184): Expect a following space
+    tkc_hotel.dbml(272,200): Expect a following space
+    tkc_hotel.dbml(272,267): Expect a following space
+    tkc_hotel.dbml(273,5): Expect a following space
+    tkc_hotel.dbml(273,9): Expect a following space
+    tkc_hotel.dbml(273,25): Expect a following space
+    tkc_hotel.dbml(273,60): Expect a following space
+    tkc_hotel.dbml(274,5): Expect a following space
+    tkc_hotel.dbml(274,9): Expect a following space
+    tkc_hotel.dbml(274,25): Expect a following space
+    tkc_hotel.dbml(274,91): Expect a following space
+    tkc_hotel.dbml(275,5): Expect a following space
+    tkc_hotel.dbml(275,9): Expect a following space
+    tkc_hotel.dbml(275,25): Expect a following space
+    tkc_hotel.dbml(275,62): Expect a following space
+    tkc_hotel.dbml(275,74): Expect a following space
+    tkc_hotel.dbml(275,95): Expect a following space
+    tkc_hotel.dbml(275,107): Expect a following space
+    tkc_hotel.dbml(275,128): Expect a following space
+    tkc_hotel.dbml(275,142): Expect a following space
+    tkc_hotel.dbml(275,163): Expect a following space
+    tkc_hotel.dbml(303,5): Expect a following space
+    tkc_hotel.dbml(303,9): Expect a following space
+    tkc_hotel.dbml(303,25): Expect a following space
+    tkc_hotel.dbml(303,38): Expect a following space
+    tkc_hotel.dbml(304,5): Expect a following space
+    tkc_hotel.dbml(304,9): Expect a following space
+    tkc_hotel.dbml(304,20): Expect a following space
+    tkc_hotel.dbml(304,36): Expect a following space
+    tkc_hotel.dbml(304,46): Expect a following space
+    tkc_hotel.dbml(304,62): Expect a following space
+    tkc_hotel.dbml(304,73): Expect a following space
+    tkc_hotel.dbml(304,78): Expect a following space
+    tkc_hotel.dbml(325,5): Expect a following space
+    tkc_hotel.dbml(325,9): Expect a following space
+    tkc_hotel.dbml(325,15): Expect a following space
+    tkc_hotel.dbml(325,46): Expect a following space
+    tkc_hotel.dbml(325,55): Expect a following space
+    tkc_hotel.dbml(325,76): Expect a following space
+    tkc_hotel.dbml(326,5): Expect a following space
+    tkc_hotel.dbml(326,8): Expect a following space
+    tkc_hotel.dbml(353,5): Expect a following space
+    tkc_hotel.dbml(353,8): Expect a following space
+    tkc_hotel.dbml(354,5): Expect a following space
+    tkc_hotel.dbml(354,8): Expect a following space
+    tkc_hotel.dbml(403,5): Expect a following space
+    tkc_hotel.dbml(403,9): Expect a following space
+    tkc_hotel.dbml(403,21): Expect a following space
+    tkc_hotel.dbml(403,37): Expect a following space
+    tkc_hotel.dbml(403,51): Expect a following space
+    tkc_hotel.dbml(403,67): Expect a following space
+    tkc_hotel.dbml(403,79): Expect a following space
+    tkc_hotel.dbml(403,84): Expect a following space
+    tkc_hotel.dbml(404,5): Expect a following space
+    tkc_hotel.dbml(404,9): Expect a following space
+    tkc_hotel.dbml(404,21): Expect a following space
+    tkc_hotel.dbml(404,37): Expect a following space
+    tkc_hotel.dbml(404,47): Expect a following space
+    tkc_hotel.dbml(404,63): Expect a following space
+    tkc_hotel.dbml(404,75): Expect a following space
+    tkc_hotel.dbml(404,81): Expect a following space
+    tkc_hotel.dbml(423,5): Expect a following space
+    tkc_hotel.dbml(423,9): Expect a following space
+    tkc_hotel.dbml(423,17): Expect a following space
+    tkc_hotel.dbml(423,30): Expect a following space
+    tkc_hotel.dbml(423,45): Expect a following space
+    tkc_hotel.dbml(423,59): Expect a following space
+    tkc_hotel.dbml(444,5): Expect a following space
+    tkc_hotel.dbml(444,8): Expect a following space
+    tkc_hotel.dbml(462,5): Expect a following space
+    tkc_hotel.dbml(462,9): Expect a following space
+    tkc_hotel.dbml(462,28): Expect a following space
+    tkc_hotel.dbml(462,42): Expect a following space
+    tkc_hotel.dbml(484,5): Expect a following space
+    tkc_hotel.dbml(484,8): Expect a following space
+    tkc_hotel.dbml(485,5): Expect a following space
+    tkc_hotel.dbml(485,8): Expect a following space
+    tkc_hotel.dbml(506,5): Expect a following space
+    tkc_hotel.dbml(506,8): Expect a following space
+    tkc_hotel.dbml(80,5): A check field must be a function expression
+    tkc_hotel.dbml(116,5): A check field must be a function expression
+    tkc_hotel.dbml(117,5): A check field must be a function expression
+    tkc_hotel.dbml(142,5): A check field must be a function expression
+    tkc_hotel.dbml(143,5): A check field must be a function expression
+    tkc_hotel.dbml(144,5): A check field must be a function expression
+    tkc_hotel.dbml(163,5): A check field must be a function expression
+    tkc_hotel.dbml(197,5): A check field must be a function expression
+    tkc_hotel.dbml(223,5): A check field must be a function expression
+    tkc_hotel.dbml(271,5): A check field must be a function expression
+    tkc_hotel.dbml(272,5): A check field must be a function expression
+    tkc_hotel.dbml(273,5): A check field must be a function expression
+    tkc_hotel.dbml(274,5): A check field must be a function expression
+    tkc_hotel.dbml(275,5): A check field must be a function expression
+    tkc_hotel.dbml(303,5): A check field must be a function expression
+    tkc_hotel.dbml(304,5): A check field must be a function expression
+    tkc_hotel.dbml(325,5): A check field must be a function expression
+    tkc_hotel.dbml(326,5): A check field must be a function expression
+    tkc_hotel.dbml(353,5): A check field must be a function expression
+    tkc_hotel.dbml(354,5): A check field must be a function expression
+    tkc_hotel.dbml(403,5): A check field must be a function expression
+    tkc_hotel.dbml(404,5): A check field must be a function expression
+    tkc_hotel.dbml(423,5): A check field must be a function expression
+    tkc_hotel.dbml(444,5): A check field must be a function expression
+    tkc_hotel.dbml(462,5): A check field must be a function expression
+    tkc_hotel.dbml(484,5): A check field must be a function expression
+    tkc_hotel.dbml(485,5): A check field must be a function expression
+    tkc_hotel.dbml(506,5): A check field must be a function expression
+
